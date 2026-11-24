@@ -48,8 +48,8 @@ describe('Schema (FA-850, TC-DBC)', () => {
     );
   });
 
-  it('Profildatenbank enthaelt 21 Tabellen', () => {
-    expect(tableNames(profile).length).toBe(21);
+  it('Profildatenbank enthaelt 22 Tabellen', () => {
+    expect(tableNames(profile).length).toBe(22);
   });
 
   it('Profildatenbank enthaelt den kcal-View (FA-329)', () => {
