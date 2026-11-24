@@ -1,6 +1,6 @@
 # Lastenheft: LifeCompanion
 
-**Version:** 0.9 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4), Anforderungen danach; Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
+**Version:** 0.10 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4), Anforderungen danach; Einkaufsplanung, Barcode, Mehrsprachigkeit (Rev. 9); Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
 
 ## 1. Zielsetzung
 
@@ -28,6 +28,9 @@ LifeCompanion ist eine mobile Begleit-App zur Organisation des Alltags und der E
 | DGE | Deutsche Gesellschaft für Ernährung; Quelle der Referenzwerte |
 | Mangel-Prognose | Bedarf (DGE) minus erwartete Zufuhr im Prognose-Fenster aus den geplanten Essen-Einträgen; Fenster einstellbar, Standard 2 Wochen (FA-613) |
 | Rezeptbuch | Ansicht im Hauptmenü: geplante Rezepte/Lebensmittel tagesweise gelistet mit Nährwerten und Vorschlägen (FA-360 ff.) |
+| Fehlbestand | Menge einer Zutat, die der geplante Bedarf über den Bestand hinaus benötigt; Basis der Einkaufsplanung (FA-406) |
+| Barcode | Maschinencode eines Produkts; an der Zutat hinterlegbar (FA-410), Suche über Open Food Facts, Kamera-Scanner in V2 (FA-411) |
+| Produktkategorie | Einkaufs-Kategorie einer Zutat (Milchprodukte, Obst, Gemüse, Snacks, …); Seed-Katalog (FA-407) |
 
 ## 3. Systemlandschaft und Stack
 
@@ -127,6 +130,9 @@ Dieser Abschnitt erzählt die wichtigsten Nutzerflüsse in fester Reihenfolge; d
 2. Die Posten landen in der **Bestandsliste**; je Posten Nährwerte sichtbar; fehlt ein Nährwertprofil → lokale Suche, Suchprovider oder manuelle Anlage (FA-402, FA-800).
 3. **FIFO-Abbuchung ab V1:** Kochen/Essen-Einträge buchen mengen-genau vom ältesten Posten ab; Deckungslücken werden angezeigt (FA-401).
 4. Optionales **MHD** pro Posten mit Warnliste „läuft bald ab / ist abgelaufen“ (FA-404); in V2 schlägt der Modus „Verwende was da ist“ Rezepte zum MHD-kritischen Bestand vor (FA-405).
+5. **Einkaufsplanung aus Fehlbeständen:** der Bedarf der geplanten Rezepte im Planungszeitraum (auch Serien wie „jeden 2. Sonntag“ oder „Mo–Fr 07:00“, FA-207a/213) wird gegen den Bestand gestellt; die Fehlbestandsliste ist der Einkaufszettel und wird per Tap in einen Einkauf übernommen (FA-406).
+6. Beim Einkauf werden **Markt, Produktkategorie, Menge und Preis** erfasst (FA-407); war die Zutat schon mal gekauft, wird der Markt aus der Historie vorgeschlagen (FA-408), und Preis-/Mengenverläufe je Produkt sind einsehbar (FA-409).
+7. Am Regal kann ein **Barcode** gescannt bzw. eingetippt werden; der Lookup über Open Food Facts vorbefüllt die Zutaten-Maske (FA-410).
 
 ### 4.7 Kochen: Aktivität mit Rezept und Teilschritten
 
@@ -161,7 +167,7 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 
 | ID | Anforderung | Prio |
 |---|---|---|
-| FA-001 | Hauptmenü mit Einträgen: Kalender, **Rezeptbuch (Tagesplan),** Aktivitäten/Vorlagen, Kategorien, Rezepte, Zutaten/Lebensmittel, Bestand/Einkäufe, Profile, Statistiken, Einstellungen, Export/Import | M |
+| FA-001 | Hauptmenü mit Einträgen: Kalender, **Rezeptbuch (Tagesplan),** Aktivitäten/Vorlagen, Kategorien, Rezepte, Zutaten/Lebensmittel, Bestand/Einkäufe, Profile, Statistiken, Einstellungen, Export/Import; ab V3 zusätzlich **Teilen** (Bluetooth-Geräteaustausch, FA-910) | M |
 | FA-002 | Menüeinträge mit Icon + beschrifteter Fläche; Design siehe FA-900 | M |
 
 ### 5.2 Profile
@@ -174,6 +180,7 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-103 | **Vergleichsmodus:** zwei Profile direkt nebeneinander vergleichen (Statistiken, Zeit pro Kategorie, Ø kcal/Tag) | S |
 | FA-104 | Alle Daten (Profil, Kalender, Aktivitäten, Rezepte, Zutaten, Bestand, Einstellungen) als **Export-Datei** sichern und auf anderem Gerät importieren | M |
 | FA-105 | Beim Löschen eines Profils: Bestätigungsdialog mit Warnung über Datenverlust | M |
+| FA-106 | **Profil-/App-Einstellungen:** Sprache (DE, EN, FR, IT, ES – Umschalter mit Länderflaggen, Voreinstellung aus der Systemsprache), **Währung** (Standard EUR) und weitere Voreinstellungen (Prognose-Fenster FA-613, Standard-Kategorien-Filter FA-214); Sprache global; Währung und Prognose-Einstellungen pro Profil | M |
 
 ### 5.3 Kalender und Aktivitäten
 
@@ -187,7 +194,7 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-205 | Tap auf Tages-/Zeitzelle: neues Aktivitätsfenster mit vorbelegter Startzeit | M |
 | FA-206 | Aktivität: Titel, Beschreibung, **Zeitraum** (Beginn/Ende), **Kategorie**, **Priorität** (*beschäftigt*, *abwesend*, *verfügbar*), **Wiederholungen** (Liste), ggf. Referenz auf Rezept oder Vorlage | M |
 | FA-207 | **Mehrere Wiederholungen pro Aktivität**, jede mit eigenem Startdatum und **optionalem absolutem Enddatum** | M |
-| FA-207a | Wiederholungstyp: alle *x* Stunden / Tage / Wochen / Monate / Jahre (Intervall konfigurierbar) | M |
+| FA-207a | Wiederholungstyp: alle *x* Stunden / Tage / Wochen / Monate / Jahre (Intervall konfigurierbar). Kombinierbar mit Wochentag(en) für Muster wie „jeden 2. Sonntag“ (= alle 14 Tage, Sonntag) oder „Mo–Fr“ | M |
 | FA-207b | Wiederholungstyp: immer am *x.* Tag des Monats | M |
 | FA-207c | Wiederholungstyp: immer am *x.* Tag des Jahres (inkl. Schaltjahresregel) | M |
 | FA-207d | Wiederholungstyp: an Wochentag(en) (Montag, Dienstag, …; Mehrfachauswahl) | M |
@@ -263,6 +270,12 @@ Neben dem Kalender existiert das **Rezeptbuch** als eigene Ansicht im Hauptmenü
 | FA-403 | Kennzeichnung „tiefgekühlt / trocken / …“ als Zusatzattribut (reine Information, keine Logik in V1) | S |
 | FA-404 | **MHD/Verfallsdatum:** optionales Feld pro Bestandsposten; Warnliste „läuft bald ab / ist abgelaufen“; ohne MHD-Datum bleibt der Posten einfach ohne Warnung | S |
 | FA-405 | **Verbrauchs-Rezeptvorschläge (V2):** aus der MHD-Warnliste und der Bestandsliste lässt sich ein Modus „Verwende was da ist“ starten; die App schlägt Rezepte vor, die den (MHD-kritischen) Bestand möglichst vollständig verwenden, und zeigt an, welche Zutaten zum Bestand passen und welche fehlen | K |
+| FA-406 | **Einkaufsplanung aus Fehlbeständen:** die App vergleicht für einen Planungszeitraum (Standard: kommende Woche, sonst wie Rezeptbuch-Range FA-360) den **Bedarf der geplanten Rezepte/Lebensmittel** (Zutatenmengen × Portionen, inkl. Serien-Instanzen FA-213, umgerechnet auf Rohmengen FA-335) mit dem **Bestand** (FIFO-Posten FA-401) und erzeugt daraus die **Fehlbestandsliste als Einkaufszettel**. Die Liste lässt sich per Tap ganz oder in Teilen in einen neuen Einkauf übernehmen (FA-400) | M |
+| FA-407 | **Einkaufsdetails:** pro Einkauf ein **Markt** (freier Name, aus Historie vorbefüllt) und pro Position eine **Produktkategorie** (Seed-Katalog: Milchprodukte, Obst, Gemüse, Snacks, Getränke, …), **Menge** und **Preis**; fehlende Angaben können bewusst frei gelassen werden, ohne die App zu blockieren (FA-800) | M |
+| FA-408 | **Marktvorschlag (Preise rein lokal):** wurde eine Zutat schon einmal gekauft, schlägt die App beim Erfassen den Markt vor, bei dem sie zuletzt (bzw. im Schnitt am günstigsten) gekauft wurde; die Vorbefüllung ist nur Vorschlag und jederzeit änderbar. Keine Online-Preisabfragen – Preisdaten stammen ausschließlich aus der eigenen Einkaufshistorie (Entscheidung O-6) | S |
+| FA-409 | **Preis- und Mengenverläufe:** je Zutat/Produkt die Entwicklung von Preis und gekaufter Menge über die Zeit (einfacher Linien- bzw. Balkenverlauf, ggf. Ø-Preis pro kg/l); basiert nur auf den selbst erfassten Einkäufen; „Marktsuche“ zeigt die Preisunterschiede nach Markt aus der Historie | S |
+| FA-410 | **Barcode an der Zutat:** optionales Barcode-Feld; Eingabe (manuell oder gescannt, FA-411) löst einen automatischen Provider-Lookup aus (Standard: Open Food Facts, FA-502) und füllt die Zutaten-Maske vor (FA-501); Commit bleibt beim Nutzer (FA-304) | M |
+| FA-411 | **Kamera-Barcode-Scanner:** kommt in V2 (Kamera-Berechtigung, Barcode-Erkennung) neben der manuellen Barcode-Eingabe (FA-410); schlägt er fehl oder ist die Kamera nicht verfügbar → normale Suche/manuelle Erfassung (FA-800) | S |
 
 ### 5.6 Suchprovider, Parser, In-App-Backend
 
@@ -319,6 +332,14 @@ Neben dem Kalender existiert das **Rezeptbuch** als eigene Ansicht im Hauptmenü
 | FA-902 | Bedienbarkeit: Swipe-/Tap-Gesten im Kalender, Undo beim Löschen | S |
 | FA-903 | **Barrierefreiheit:** TalkBack-Beschriftungen, Kontrast-Anforderungen, Touch-Ziele min. 48 dp | S |
 
+### 5.11 Teilen zwischen Geräten (V3)
+
+| ID | Anforderung | Prio |
+|---|---|---|
+| FA-910 | **Bluetooth-Schnittstelle (V3):** direkter Austausch zwischen der App auf zwei Android-Geräten per BLE/WLAN-Direct; eigener Menüpunkt **„Teilen“** im Hauptmenü (FA-001); überträgt das Export-Bundle-Format (FA-104) als Grundlage | K |
+| FA-911 | **Austauschbare Objekte:** einzelne **Aktivitäten, Rezepte, Zutaten oder ganze Profile** sind wählbar; beim Empfang werden sie sauber in die empfangende Datenbank integriert (neue IDs, Referenzen bleiben erhalten); ein empfangenes Profil wird als neues Profil mit eigener Datenbank angelegt (FA-851) | K |
+| FA-912 | **Empfangs-Dialog:** Vorschau der eingehenden Objekte mit Bestätigung vor dem Übernehmen; bereits vorhandene Objekte werden als Konflikt angezeigt (überspringen oder als neues Objekt anlegen); Import folgt den FA-800-Grundsätzen und scheitert nie mit Absturz | K |
+
 ## 6. Datenmodell (Skizze)
 
 > Geltungsbereich: Dieses Schema ist Ausgangspunkt der Entwurfsphase (FA-850) und gilt **pro Profildatenbank** (FA-851); Seed-/Katalogdaten werden beim Anlegen jeder Profildatenbank eingespielt (FA-852).
@@ -335,7 +356,7 @@ recurrence(id, aktivitaet_id, typ, intervall, wochentage[], tag_im_monat,
            tag_im_jahr, startdatum, enddatum NULL)                       -- mehrere pro Aktivität; Ausnahmen/Instanz-Editing erst V2 (FA-212)
 
 ingredient(id, name, basis_einheit,             -- 'g' | 'ml'
-           stueckgewicht_g NULL, dichte_g_pro_ml NULL)
+           stueckgewicht_g NULL, dichte_g_pro_ml NULL, barcode NULL)  -- FA-410
 nutrient(id, name, kategorie,                    -- vitamin|mineral|spurenelement|lipid|amino|alkohol|…
          einheit)                                 -- 'mg' | 'µg' | 'ml' (nur Wasser); je Nährstoff fest (FA-322)
 ingredient_nutrient(ingredient_id, nutrient_id, wert_normiert_pro_100,    -- normiert je Nährstoff-Einheit (FA-322), Referenz 100 g/ml
@@ -348,13 +369,17 @@ recipe_ingredient(recipe_id, ingredient_id, menge, einheit)               -- g|k
 unit_conversion(id, einheit, faktor_ml, default_g_faktor_ml)
 ingredient_unit_override(ingredient_id, einheit, gramm)                    -- nutzerspezifisch, überschreibt Default
 
-purchase(id, profil_id, datum)
+shopping_category(id, name, farbe NULL)                                    -- Seed-Katalog: Milchprodukte, Obst, Gemüse, Snacks, … (FA-407)
+
+purchase(id, profil_id, datum, markt)                                      -- Markt frei oder aus Historie (FA-407/408)
 purchase_item(id, purchase_id, ingredient_id, menge, einheit, zustand,     -- z. B. 'TK' | 'trocken' | 'frisch'
+              shopping_category_id NULL, preis NULL,                       -- Produktkategorie + Preis (FA-407)
               mhd NULL, uebrig_gelassen NULL)                              -- MHD (FA-404); Reste-Anteil K (FA-610)
 
 reference_dge(nutrient_id, altersgruppe, geschlecht, empfohlen_tag)        -- Referenzwerte, nicht hart kodiert
 
-settings(schluessel, wert)   -- u. a. Prognose-Fenster in Tagen, Standard 14, 1–365 (FA-613), Standard-Kategorien-Filter (FA-214)
+settings(schluessel, wert)   -- u. a. Prognose-Fenster in Tagen, Standard 14, 1–365 (FA-613), Standard-Kategorien-Filter (FA-214),
+                             -- Sprache (FA-106), Währung (FA-106)
 ```
 
 Hinweise zum Modell:
@@ -392,11 +417,11 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 
 ## 8. Nicht-funktionale Anforderungen
 
-- **Datenschutz:** Gesundheits- und Essverhaltensdaten (Nährwerte, Gewicht, Alter) sind sensibel; Verarbeitung rein lokal auf dem Gerät, keine Cloud-Pflicht, keine Werbe-/Tracking-SDKs. Suchbegriffe und Abfragen gehen an die gewählten Provider (Open Food Facts etc.) – das wird in den Einstellungen transparent dokumentiert (welcher Provider erhält welche Daten, Attributions-Pflicht von Open Food Facts); keine Telemetrie, keine Konten. DSGVO-Prüfung, falls später Sync/Backup über Drittanbieter angeboten wird.
+- **Datenschutz:** Gesundheits- und Essverhaltensdaten (Nährwerte, Gewicht, Alter) sind sensibel; Verarbeitung rein lokal auf dem Gerät, keine Cloud-Pflicht, keine Werbe-/Tracking-SDKs. Suchbegriffe und Abfragen gehen an die gewählten Provider (Open Food Facts etc.) – das wird in den Einstellungen transparent dokumentiert (welcher Provider erhält welche Daten, Attributions-Pflicht von Open Food Facts); keine Telemetrie, keine Konten. Barcode-Abfragen gehen nur an den gewählten Provider (Standard Open Food Facts); **Preisdaten werden ausschließlich lokal aus der eigenen Einkaufshistorie gebildet** – keine Online-Preisabfragen (O-6). DSGVO-Prüfung, falls später Sync/Backup über Drittanbieter angeboten wird.
 - **Robustheit:** keine unbehandelten Fehler bei fehlenden Daten (FA-800); Import/Parsing scheitert niemals mit Absturz, sondern führt zu Hinweis und Nachfrage.
 - **Performance:** Wochenansicht bleibt auch mit mehreren hundert Einträgen flüssig (lazy render, FlatList/FlashList).
 - **Testbarkeit:** Umrechnung, Energie-Ableitung (FA-329), Wiederholungslogik, Statistik = Unit-Tests; UI-Smoke-Tests.
-- **Sprache:** UI deutsch; Internationalisierung (Englisch) vorbereitet.
+- **Sprache (V1-Mehrsprachigkeit):** UI ab V1 auf **Deutsch, Englisch, Französisch, Italienisch, Spanisch** (alle Texte als Ressourcen, i18n-Framework ab Tag 1, kein festkodierter Text); Sprachumschalter in den Einstellungen mit Länderflaggen (Flaggen stehen konventionell für die Sprachen, Fallback bei Fehlen: Deutsch); Restansichten ohne Übersetzung fallen sichtbar auf Deutsch zurück.
 - **Lizenz/Vertrieb (Entscheidung O-5):** Vertrieb **ausschließlich über F-Droid**; daher nur FOSS-Libraries (keine proprietären SDKs, keine Google-Play-Services-Abhängigkeiten im Kern), Lizenz **LGPL-3.0** (bewusst gewählt; Hinweis: LGPL ist primär eine Bibliotheks-Lizenz, für eine Gesamt-App zulässig, üblicher wäre GPL-3.0). Das In-App-Backend ist eingebettet und optional deaktivierbar; ohne es stehen lokale Suche und manuelle Erfassung bereit.
 
 ## 9. Phasenplanung (Meilensteine)
@@ -407,10 +432,10 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | **M2 – Kalender & Aktivitäten** | Wochenansicht, Aktivitäten, Wiederholungen, Prioritäten, Kategorien, Vorlagen, Kalender-Sync, Kategorie-Filter (FA-214) |
 | **M3 – Zutaten & Rezepte** | Zutaten-CRUD mit Nährwertprofil, Rezept-CRUD, Portions- und Einheiten-Umrechnung, lokale Suche, **In-App-Backend (Node/TS) mit Provider-Adaptern** (Open Food Facts zuerst, darauf folgend die Website-Provider) |
 | **M4 – Integration Kochen** | Aktivität „Kochen“ mit Rezeptvorschlag, Teilschritte, Portionen, Nährwertdetails, **Rezeptbuch-Grundansicht (FA-360/361/363)** |
-| **M5 – Bestand & Einkäufe** | Einkaufserfassung, Bestandsliste inkl. **FIFO-Abbuchung (FA-401)**, MHD-Warnliste (FA-404), Warn-/Nachfrage-Logik (FA-800) |
+| **M5 – Bestand & Einkäufe** | Einkaufserfassung mit **Markt/Produktkategorie/Menge/Preis (FA-407)**, Bestandsliste inkl. **FIFO-Abbuchung (FA-401)**, MHD-Warnliste (FA-404), **Einkaufsplanung aus Fehlbeständen (FA-406)**, **Barcode-Feld + Provider-Lookup (FA-410)**, Warn-/Nachfrage-Logik (FA-800) |
 | **M6 – Statistiken** | Ernährungs- und Aktivitätsstatistik, DGE-Vergleich, Profil-Wechsel und -Vergleich, **Mangel-Prognose mit Schließungs-Vorschlägen (FA-613/614)**, Rezeptbuch-Vorschlagsansicht tagesweise (FA-362), Kategorie-Filter (FA-612) |
-| **M7 – Export/Import & Feinschliff** | JSON-Export/Import, Design-Feinschliff, Stabilitätstest |
-| **M8 – Ausbaustufe** | iOS über dieselbe Codebasis (O-1), Serien-Editing und Ausnahmen (FA-212), Grundumsatz-Bilanz (FA-611), Reste-Abrechnung (FA-610), Verbrauchs-Rezeptvorschläge (FA-405), weitere Such-Provider |
+| **M7 – Export/Import, Sprachen & Feinschliff** | JSON-Export/Import, **Mehrsprachigkeit DE/EN/FR/IT/ES (FA-106)**, **Preis-/Mengenverläufe und Marktvorschläge (FA-408/409)**, Design-Feinschliff, Stabilitätstest |
+| **M8 – Ausbaustufe** | iOS über dieselbe Codebasis (O-1), Serien-Editing und Ausnahmen (FA-212), Grundumsatz-Bilanz (FA-611), Reste-Abrechnung (FA-610), Verbrauchs-Rezeptvorschläge (FA-405), **Kamera-Barcode-Scanner (FA-411)**, **Bluetooth-Teilen zwischen Geräten (FA-910–912, V3)**, weitere Such-Provider |
 ## 10. Abnahmekriterien
 
 1. Alle **M**-Anforderungen sind laut Test-Katalog (FA-854) bestanden; kein unvollständiger Pflichtkern-Loop offen (FA-340).
@@ -424,6 +449,8 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 9. Mangel-Prognose: für das einstellbare Fenster (Standard 14 Tage, 1–365) wird je Nährstoff „Bedarf − geplante Zufuhr“ angezeigt; ein Schließungs-Vorschlag (Menge bezogen auf das Fenster) lässt sich per Tap als Essen-Eintrag übernehmen (FA-613/614).
 10. Kategorie-Filter: gefilterte Wochenansicht lädt schnell und zeigt nicht gefilterte Termine ausgegraut (FA-214).
 11. Rezeptbuch: die Tagesansicht listet geplante Rezepte/Lebensmittel mit Nährwerten und Tages-Summen – auch über eine von-bis-Range bis ein ganzes Jahr ohne spürbares Ruckeln (Virtualisierung); Vorschläge sind pro Tag sichtbar und per Tap in den Kalender übernehmbar (FA-360–363).
+12. Einkaufsplanung: der Bedarf geplanter Rezepte einer Wochenplanung (inkl. Serie „jeden 2. Sonntag“) minus Bestand ergibt die Fehlbestandsliste; die Liste lässt sich in einen Einkauf übernehmen, der mit Markt, Produktkategorie, Menge und Preis gepflegt ist (FA-406/407).
+13. Sprachwechsel zwischen DE/EN/FR/IT/ES direkt in den Einstellungen (Umschalter mit Länderflaggen); Kalender, Rezepte, Bestand, Statistik und Import/-export sind vollständig übersetzt, ohne Datenverlust (FA-106).
 
 ## 11. Risikoregister
 
@@ -438,6 +465,8 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | Große Ranges (bis 1 Jahr) in Rezeptbuch/Prognose | Performance-Einbruch, Akkuverbrauch | Virtualisierung + inkrementelle/vorberechnete Tages-Aggregation (FA-360); Umfang in Abnahmekriterium 11 geprüft |
 | DGE-Referenzwerte-Lizenz | Tabelle evtl. nicht frei verteilbar | Referenzwerte als Seed-Daten (FA-852) mit Quellenangabe, nutzeranpassbar |
 | Prognose basiert auf geplanten, nicht konsumierten Einträgen | Mangel-Prognose kann Wirklichkeit verfehlen | Ausweis als Planungs-/Prognose-Wert; Kennzeichnung unvollständig erfasster Tage (FA-341); Abgleich mit tatsächlicher Zufuhr (FA-610) in der Rückblick-Statistik |
+| Übersetzungsaufwand für 5 Sprachen ab V1 | M7/Fertigstellung verzögert sich | i18n-Framework und Text-Bausteine ab Tag 1 (M1), Kern-Flüsse zuerst übersetzt, sichtbarer Deutsch-Fallback; Gemeinschafts-Anpassungen nach Release denkbar (F-Droid) |
+| BLE-Kompatibilität zwischen Android-Geräten (V3) | Teilen-Funktion unzuverlässig | Späte Phase (M8/V3), Übertragung über das robuste Export-Bundle (FA-104), Empfang nur nach Vorschau+Bestätigung (FA-912); als K-Stufe planbar ohne V1-Risiko |
 
 ## 12. Anhang
 
@@ -450,6 +479,8 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | **O-3** | Datenquellen | **Offizielle APIs zuerst:** Open Food Facts als Standard-Provider, USDA FoodData Central optional; danach Website-Provider naehrwertrechner.de, fddb, rewe.de/rezepte über das Provider-Interface (FA-502) |
 | **O-4** | Backend | **Eingebettetes Node-Backend (TypeScript, Fastify) ab V1**, läuft intern in der App als Backend und lauscht ausschließlich auf 127.0.0.1 – kein LAN, keine Authentifizierung nötig; optional deaktivierbar (FA-500) |
 | **O-5** | Lizenz/Vertrieb | Vertrieb **nur über F-Droid**; Lizenz **LGPL-3.0**; nur FOSS-Libraries, keine proprietären SDKs |
+| **O-6** | Preis-/Marktdaten | **Rein lokal:** Preise und Märkte kommen ausschließlich aus der selbst erfassten Einkaufshistorie; keine Online-Preisabfragen (Datenschutz, F-Droid-Freundlichkeit). Erweiterung über das Provider-Interface (FA-504) bleibt möglich |
+| **O-7** | Barcode | Barcode-Feld an der Zutat **ab V1** mit Open-Food-Facts-Lookup (FA-410); **Kamera-Scanner in V2** (FA-411); interne Modell-Abstufung wie Provider-Suche (FA-502) |
 
 ### Anhang B – Änderungshistorie
 
@@ -462,4 +493,5 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | 5 | Kategorie-Filter (FA-214/612), Mangel-Prognose mit Schließungs-Vorschlägen (FA-613/614), Verbrauchs-Rezeptvorschläge V2 (FA-405) |
 | 6 | Rezeptbuch als Tagesplan-Ansicht im Hauptmenü (FA-360–363) |
 | 7 | Prognose-Fenster einstellbar (Standard 14 Tage, 1–365), Rezeptbuch-Range im Rezeptbuch selbst wählbar bis 1 Jahr mit Virtualisierung (FA-360/613/614) |
+| 9 (→ v0.10) | Einkaufsplanung aus Fehlbeständen (FA-406), Einkaufsdetails Markt/Produktkategorie/Menge/Preis (FA-407), Marktvorschlag + Preis-/Mengenverläufe rein lokal (FA-408/409, O-6), Barcode-Feld mit OFF-Lookup ab V1 (FA-410, O-7), Kamera-Scanner V2 (FA-411), Bluetooth-Teilen V3 (FA-910–912), Mehrsprachigkeit DE/EN/FR/IT/ES (FA-106), Wiederholungstypen kombinierbar (FA-207a) |
 | 8 (→ v0.9) | Restrukturierung: neuer Abschnitt 4 „Anwendungsabläufe“ (zehn Nutzerflüsse mit FA-Querverweisen), Meilensteine als Phasenplanung hinter die NFA verschoben, Datenbank-/Seed-/Test-Abschnitt als 5.9 in die Anforderungen integriert, inline Rev.-Markierungen in Anhang B ausgelagert, veraltete „Proxy im Heimnetz“-Formulierungen durch die Entscheidung „eingebettetes Backend auf 127.0.0.1“ ersetzt |
