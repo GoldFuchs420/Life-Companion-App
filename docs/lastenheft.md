@@ -1,6 +1,6 @@
 # Lastenheft: LifeCompanion
 
-**Version:** 0.10 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4), Anforderungen danach; Einkaufsplanung, Barcode, Mehrsprachigkeit (Rev. 9); Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
+**Version:** 0.11 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4), Anforderungen danach; Einkaufsplanung, Barcode, Mehrsprachigkeit (Rev. 9), Provider-Einwilligung + Offline-Funktion (Rev. 10); Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
 
 ## 1. Zielsetzung
 
@@ -31,6 +31,8 @@ LifeCompanion ist eine mobile Begleit-App zur Organisation des Alltags und der E
 | Fehlbestand | Menge einer Zutat, die der geplante Bedarf über den Bestand hinaus benötigt; Basis der Einkaufsplanung (FA-406) |
 | Barcode | Maschinencode eines Produkts; an der Zutat hinterlegbar (FA-410), Suche über Open Food Facts, Kamera-Scanner in V2 (FA-411) |
 | Produktkategorie | Einkaufs-Kategorie einer Zutat (Milchprodukte, Obst, Gemüse, Snacks, …); Seed-Katalog (FA-407) |
+| Provider-Einwilligung | Einmalige explizite Zustimmung pro Suchprovider vor dem ersten Abruf; jederzeit widerrufbar (FA-507, O-8) |
+| Offline-Modus | Betrachtungsmodus: die App läuft vollständig ohne Netz; Online-Suchen nur auf ausdrückliche Anforderung und mit klarem Online-/Offline-Zustand (FA-508) |
 
 ## 3. Systemlandschaft und Stack
 
@@ -158,6 +160,13 @@ Dieser Abschnitt erzählt die wichtigsten Nutzerflüsse in fester Reihenfolge; d
 1. Der Systemkalender **„LifeCompanion“** wird von der App gelesen und geschrieben (FA-200).
 2. Sync ist bidirektional für die eigene Kalender-ID; die App pflegt die Serienlogik in ihrer DB und gleicht die **expandierten Einzel-Events** mit dem Systemkalender per „Last write wins“ pro Instanz ab (FA-201, FA-213).
 3. Sync läuft on-start/on-change und über Hintergrundjobs (Stack 3.1); fehlgeschlagene oder fehlende Grundlagen erzeugen Hinweise statt Fehler (FA-800).
+
+### 4.11 Datenschutz: Einwilligung und Offline-Nutzung
+
+1. Alle externen Anfragen – Nährwert-, Barcode-, Lebensmittelsuchen und Rezept-Suchen (FA-502, FA-306, FA-410) – fallen unter die Transparenz-Pflicht: die Einstellungen zeigen pro Provider, was wann angefragt wird (FA-507).
+2. Beim **ersten Suchversuch** pro Provider fragt die App einmalig nach der Einwilligung; ohne Bestätigung wird der Provider nie kontaktiert und die lokale bzw. manuelle Erfassung angeboten (FA-507, O-8).
+3. Widerruft der Nutzer die Einwilligung später, schaltet die App den Provider sofort ab; bereits übernommene Daten behalten ihre Herkunftsangaben (`quelle`, `abgefragt_am`, FA-506).
+4. **Offline:** ohne Netz (oder Flugmodus) ist die App vollständig nutzbar; externe Suche zeigt einen klaren Offline-Hinweis und nutzt ggf. den Ergebnis-Cache, statt zu scheitern (FA-508, FA-800).
 
 ## 5. Funktionale Anforderungen
 
@@ -288,6 +297,8 @@ Neben dem Kalender existiert das **Rezeptbuch** als eigene Ansicht im Hauptmenü
 | FA-504 | Provider-Interface mit klarer Vertragsdefinition (JSON-Schema pro Entität), damit weitere Quellen ohne App- und Proxy-Rework nachrüstbar sind | M |
 | FA-505 | Provider-Adapter im Backend sind einzeln konfigurierbar (aktiv/inaktiv, Reihenfolge), jede Antwort wird mit Provider- und Abfragedatum protokolliert, damit die Herkunft der übernommenen Daten nachvollziehbar bleibt | S |
 | FA-506 | UI und Backend stimmen sich beim Start per Versions-Handshake ab (interne API-Version; Inkompatibilität → Hinweis). Übernommene Daten tragen in der **Datenbank** Quelle und Abfragedatum (`quelle`, `abgefragt_am`), nicht nur im Backend-Log | M |
+| FA-507 | **Provider-Einwilligung (O-8):** bevor die App einen Suchprovider das erste Mal kontaktiert, muss der Nutzer ihn **einmalig explizit bestätigen** (Open Food Facts, USDA, naehrwertrechner.de, fddb, rewe.de/rezepte – jeder einzeln). Die Einwilligung wird mit Datum protokolliert (`provider_consent`), ist in den Einstellungen jederzeit sichtbar und **widerrufbar**; ohne Einwilligung wird der Provider nie angerufen – auch nicht für Barcode- oder Rezept-Anfragen (FA-410, FA-306) | M |
+| FA-508 | **Offline-Funktion:** alle Kernfunktionen (Kalender, Rezeptbuch, Bestand, Statistik, Export/Import, Serien) laufen **komplett offline**. Online-Funktionen (Provider-Suche, Barcode-Lookup) werden nur auf **ausdrückliche Nutzeranforderung** ausgeführt, nie automatisch im Hintergrund. Der Online-/Offline-Zustand ist jederzeit sichtbar; offline werden Suchanfragen mit klarem Hinweis blockiert statt mit Fehlerklick abgebrochen, bereits geladene Suchergebnisse und Provider-Daten bleiben aus dem Cache nutzbar (`abgefragt_am`, FA-506) | M |
 
 ### 5.7 Statistiken
 
@@ -378,6 +389,8 @@ purchase_item(id, purchase_id, ingredient_id, menge, einheit, zustand,     -- z.
 
 reference_dge(nutrient_id, altersgruppe, geschlecht, empfohlen_tag)        -- Referenzwerte, nicht hart kodiert
 
+provider_consent(provider, akzeptiert_am NULL)                             -- einmalige Einwilligung pro Provider (FA-507, O-8)
+
 settings(schluessel, wert)   -- u. a. Prognose-Fenster in Tagen, Standard 14, 1–365 (FA-613), Standard-Kategorien-Filter (FA-214),
                              -- Sprache (FA-106), Währung (FA-106)
 ```
@@ -417,7 +430,7 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 
 ## 8. Nicht-funktionale Anforderungen
 
-- **Datenschutz:** Gesundheits- und Essverhaltensdaten (Nährwerte, Gewicht, Alter) sind sensibel; Verarbeitung rein lokal auf dem Gerät, keine Cloud-Pflicht, keine Werbe-/Tracking-SDKs. Suchbegriffe und Abfragen gehen an die gewählten Provider (Open Food Facts etc.) – das wird in den Einstellungen transparent dokumentiert (welcher Provider erhält welche Daten, Attributions-Pflicht von Open Food Facts); keine Telemetrie, keine Konten. Barcode-Abfragen gehen nur an den gewählten Provider (Standard Open Food Facts); **Preisdaten werden ausschließlich lokal aus der eigenen Einkaufshistorie gebildet** – keine Online-Preisabfragen (O-6). DSGVO-Prüfung, falls später Sync/Backup über Drittanbieter angeboten wird.
+- **Datenschutz:** Gesundheits- und Essverhaltensdaten (Nährwerte, Gewicht, Alter) sind sensibel; Verarbeitung rein lokal auf dem Gerät, keine Cloud-Pflicht, keine Werbe-/Tracking-SDKs. Datenschutz gilt für **alle** externen Anfragen: Nährwert-, **Lebensmittel-, Barcode- und Rezept-Suchen** – sie gehen nur an die gewählten, **einmalig vom Nutzer bestätigten Provider** (FA-507, O-8) und werden in den Einstellungen transparent dokumentiert (welcher Provider erhält welche Daten, Attributions-Pflicht von Open Food Facts); nur Suchbegriffe/Nährwert- bzw. Rezeptabfragen, keine persönlichen Daten; keine Telemetrie, keine Konten. Barcode-Abfragen gehen nur an den gewählten Provider (Standard Open Food Facts); **Preisdaten werden ausschließlich lokal aus der eigenen Einkaufshistorie gebildet** – keine Online-Preisabfragen (O-6). DSGVO-Prüfung, falls später Sync/Backup über Drittanbieter angeboten wird.
 - **Robustheit:** keine unbehandelten Fehler bei fehlenden Daten (FA-800); Import/Parsing scheitert niemals mit Absturz, sondern führt zu Hinweis und Nachfrage.
 - **Performance:** Wochenansicht bleibt auch mit mehreren hundert Einträgen flüssig (lazy render, FlatList/FlashList).
 - **Testbarkeit:** Umrechnung, Energie-Ableitung (FA-329), Wiederholungslogik, Statistik = Unit-Tests; UI-Smoke-Tests.
@@ -430,7 +443,7 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 |---|---|
 | **M1 – Fundament** | Projektsetup, **Datenbankentwurf (ER-Modell, Schemadefinition, Migrationen)**, Seed-Daten-Anlage, Profil-CRUD inkl. **Profil-Datenbanken (FA-851)**, MVVM-Gerüst, Design-System, **Test-Katalog-Anlage (FA-854)** |
 | **M2 – Kalender & Aktivitäten** | Wochenansicht, Aktivitäten, Wiederholungen, Prioritäten, Kategorien, Vorlagen, Kalender-Sync, Kategorie-Filter (FA-214) |
-| **M3 – Zutaten & Rezepte** | Zutaten-CRUD mit Nährwertprofil, Rezept-CRUD, Portions- und Einheiten-Umrechnung, lokale Suche, **In-App-Backend (Node/TS) mit Provider-Adaptern** (Open Food Facts zuerst, darauf folgend die Website-Provider) |
+| **M3 – Zutaten & Rezepte** | Zutaten-CRUD mit Nährwertprofil, Rezept-CRUD, Portions- und Einheiten-Umrechnung, lokale Suche, **In-App-Backend (Node/TS) mit Provider-Adaptern** (Open Food Facts zuerst, darauf folgend die Website-Provider), **Provider-Einwilligung (FA-507) und Offline-Funktion mit Ergebnis-Cache (FA-508)** |
 | **M4 – Integration Kochen** | Aktivität „Kochen“ mit Rezeptvorschlag, Teilschritte, Portionen, Nährwertdetails, **Rezeptbuch-Grundansicht (FA-360/361/363)** |
 | **M5 – Bestand & Einkäufe** | Einkaufserfassung mit **Markt/Produktkategorie/Menge/Preis (FA-407)**, Bestandsliste inkl. **FIFO-Abbuchung (FA-401)**, MHD-Warnliste (FA-404), **Einkaufsplanung aus Fehlbeständen (FA-406)**, **Barcode-Feld + Provider-Lookup (FA-410)**, Warn-/Nachfrage-Logik (FA-800) |
 | **M6 – Statistiken** | Ernährungs- und Aktivitätsstatistik, DGE-Vergleich, Profil-Wechsel und -Vergleich, **Mangel-Prognose mit Schließungs-Vorschlägen (FA-613/614)**, Rezeptbuch-Vorschlagsansicht tagesweise (FA-362), Kategorie-Filter (FA-612) |
@@ -451,6 +464,7 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 11. Rezeptbuch: die Tagesansicht listet geplante Rezepte/Lebensmittel mit Nährwerten und Tages-Summen – auch über eine von-bis-Range bis ein ganzes Jahr ohne spürbares Ruckeln (Virtualisierung); Vorschläge sind pro Tag sichtbar und per Tap in den Kalender übernehmbar (FA-360–363).
 12. Einkaufsplanung: der Bedarf geplanter Rezepte einer Wochenplanung (inkl. Serie „jeden 2. Sonntag“) minus Bestand ergibt die Fehlbestandsliste; die Liste lässt sich in einen Einkauf übernehmen, der mit Markt, Produktkategorie, Menge und Preis gepflegt ist (FA-406/407).
 13. Sprachwechsel zwischen DE/EN/FR/IT/ES direkt in den Einstellungen (Umschalter mit Länderflaggen); Kalender, Rezepte, Bestand, Statistik und Import/-export sind vollständig übersetzt, ohne Datenverlust (FA-106).
+14. Datenschutz/Offline: ohne erteilte Einwilligung verlässt **keine** Anfrage das Gerät (auch nicht Barcode-/Rezept-Suchen) – per Netz-Beobachtung geprüft; im Flugzeugmodus sind Kalender, Rezeptbuch, Bestand und Statistik voll nutzbar, Suchen zeigen einen Offline-Hinweis statt Fehler (FA-507/508).
 
 ## 11. Risikoregister
 
@@ -493,5 +507,6 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | 5 | Kategorie-Filter (FA-214/612), Mangel-Prognose mit Schließungs-Vorschlägen (FA-613/614), Verbrauchs-Rezeptvorschläge V2 (FA-405) |
 | 6 | Rezeptbuch als Tagesplan-Ansicht im Hauptmenü (FA-360–363) |
 | 7 | Prognose-Fenster einstellbar (Standard 14 Tage, 1–365), Rezeptbuch-Range im Rezeptbuch selbst wählbar bis 1 Jahr mit Virtualisierung (FA-360/613/614) |
-| 9 (→ v0.10) | Einkaufsplanung aus Fehlbeständen (FA-406), Einkaufsdetails Markt/Produktkategorie/Menge/Preis (FA-407), Marktvorschlag + Preis-/Mengenverläufe rein lokal (FA-408/409, O-6), Barcode-Feld mit OFF-Lookup ab V1 (FA-410, O-7), Kamera-Scanner V2 (FA-411), Bluetooth-Teilen V3 (FA-910–912), Mehrsprachigkeit DE/EN/FR/IT/ES (FA-106), Wiederholungstypen kombinierbar (FA-207a) |
+| 10 (→ v0.11) | Datenschutz für alle externen Anfragen (auch Rezept-/Barcode-Suchen) präzisiert; Provider-Einwilligung: einmalige Zustimmung pro Provider, protokolliert und widerrufbar (FA-507, O-8); Offline-Funktion: Kern offline, Online nur auf Anforderung, Ergebnis-Cache (FA-508) |
+| 9 (→ v0.10) | Einkaufsplanung aus Fehlbeständen (FA-406, Einkaufsdetails Markt/Produktkategorie/Menge/Preis (FA-407), Marktvorschlag + Preis-/Mengenverläufe rein lokal (FA-408/409, O-6), Barcode-Feld mit OFF-Lookup ab V1 (FA-410, O-7), Kamera-Scanner V2 (FA-411), Bluetooth-Teilen V3 (FA-910–912), Mehrsprachigkeit DE/EN/FR/IT/ES (FA-106), Wiederholungstypen kombinierbar (FA-207a) |
 | 8 (→ v0.9) | Restrukturierung: neuer Abschnitt 4 „Anwendungsabläufe“ (zehn Nutzerflüsse mit FA-Querverweisen), Meilensteine als Phasenplanung hinter die NFA verschoben, Datenbank-/Seed-/Test-Abschnitt als 5.9 in die Anforderungen integriert, inline Rev.-Markierungen in Anhang B ausgelagert, veraltete „Proxy im Heimnetz“-Formulierungen durch die Entscheidung „eingebettetes Backend auf 127.0.0.1“ ersetzt |
