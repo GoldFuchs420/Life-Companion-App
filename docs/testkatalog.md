@@ -96,6 +96,8 @@
 | TC-AGG-04 | FA-612 | Kategorie-Filter im Zeitraum X | gefilterte Anteile in Statistiken ausgegraut statt entfernt (FA-612) |
 | TC-AGG-05 | FA-328 | Einzel-Lebensmittel-Eintrag ohne Rezept | wird wie Essen-Eintrag aggregiert |
 
+> **Ausgestaltung (Rev. 14, umgesetzt in `tests/db/aggregator.test.ts`):** „fehlt“ = Nährstoff im Katalog, aber keine `ingredient_nutrient`-Zeile (unabhängig von der Stufe, FA-340); eine Zeile mit Wert 0 ist bewusste 0 (TC-NRM-05). Lücken → Tag „unvollständig erfasst“ (`unvollstaendigeTage` + `fehlendeNutrientwerte` mit FA-800-Hinweis); vorhandene Teilwerte werden trotzdem aggregiert. Kategorie-Filter ergänzt `ausgegraut`, `proNutrient` bleibt unangetastet.
+
 ### TC-DGE · DgeComparator (FA-601)
 
 | ID | FA | Fall | Erwartet |
@@ -103,6 +105,8 @@
 | TC-DGE-01 | FA-601 | Profil Alter/Gewicht/Geschlecht → Referenzzeile | passende `reference_dge`-Zeile (nicht hart kodiert) |
 | TC-DGE-02 | FA-800 | Altersgruppe ohne Referenzwert | Dialog „Referenzwert fehlt – ergänzen/überspringen“ |
 | TC-DGE-03 | FA-602 | Ampellogik | unterhalb / innerhalb / oberhalb mit korrekten Schwellen |
+
+> **Ausgestaltung (Rev. 14, umgesetzt in `tests/db/dge.test.ts`):** „innerhalb“ = ± 10 % der Empfehlung (relative Toleranz, K-Default); Altersgruppen-Mapping 15-19 / 19-25 / 25-51 / 51-65 / 65+ aus dem Profil-Alter (K-Default, kein stiller Fallback); fehlende `reference_dge`-Zeile → „Referenzwert fehlt“ (FA-800, TC-DGE-02).
 
 ### TC-FEH · Mangel-Prognose und Vorschläge (FA-613/614)
 
@@ -298,5 +302,23 @@ hinterlegt („Golden Values“), um Regressionen sichtbar zu machen (FA-855).
 | F-4 | CI-Plattform: GitHub Actions (Voreinstellung)? | GitHub Actions |
 | F-5 | Umfang der automatisierten UI-Flows: alle 12 TC-UI-Fälle oder nur M-Kern (01/02/05/09/11)? | M-Kern automatisiert, Rest manuell skriptgeprüft |
 | F-6 | Verwaltung des USDA-API-Keys (Backend-Config-Datei)? | Key nicht in Tests nötig (Fixtures), Konfiguration später |
+
+> **Stand (Rev. 14):** F-1 und F-4 sind aktiv umgesetzt (Vitest + GitHub Actions auf jeden PR, node 22); F-2/F-3/F-5/F-6 folgen den Voreinstellungen ohne Änderung.
+
+## 10. Umsetzungsstand der TC-Gruppen
+
+Automatisierte Abdeckung nach dem M2-Domänenlogik-Durchlauf (Rev. 14, 64 Tests in CI):
+
+| TC-Gruppe | Automatisiert in | Status |
+|---|---|---|
+| TC-ENE (5) | `tests/unit/energy.test.ts` | umgesetzt |
+| TC-UMR | `tests/unit/unitConverter.test.ts` | umgesetzt |
+| TC-NRM (04/05) | `tests/db/schema.test.ts`, `tests/db/dao.test.ts` + Lücken-Semantik im Aggregator | umgesetzt |
+| TC-REC (9) | `tests/unit/recurrence.test.ts` | umgesetzt |
+| TC-POR (3) | `tests/unit/portion.test.ts` | umgesetzt |
+| TC-FIF (Teil 01–04) | `tests/db/stock.test.ts` | umgesetzt |
+| TC-AGG (5) | `tests/db/aggregator.test.ts` | umgesetzt |
+| TC-DGE (3) | `tests/db/dge.test.ts`, `tests/unit/nutritionHelpers.test.ts` | umgesetzt |
+| TC-OVR, TC-KAL, TC-FEH, TC-API, TC-PRV, TC-EXP, TC-UI, TC-I18N, TC-PRF, TC-DBC (Rest) | – | offen (M3+) |
 
 Der Fragenkatalog wird dem Auftraggeber zur Beantwortung vorgelegt; bis dahin gelten die Voreinstellungen (siehe letzte Spalte).

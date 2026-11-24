@@ -1,6 +1,6 @@
 # Lastenheft: LifeCompanion
 
-**Version:** 0.14 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4); DB-Design verbindlich in `docs/datamodel.md`, API-Vertrag des In-App-Backends verbindlich in `docs/proxy-api.md`, Test-Katalog verbindlich in `docs/testkatalog.md` (Rev. 13); Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
+**Version:** 0.15 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4); DB-Design verbindlich in `docs/datamodel.md`, API-Vertrag des In-App-Backends verbindlich in `docs/proxy-api.md`, Test-Katalog verbindlich in `docs/testkatalog.md` (Rev. 13); Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
 
 ## 1. Zielsetzung
 
@@ -44,7 +44,7 @@ Das Frontend ist **React Native mit Expo in TypeScript**; Android kommt zuerst, 
 |---|---|---|
 | App-Framework / UI | **React Native + Expo, TypeScript** | Eine Codebasis für Android und später iOS; entspricht der TS/JS-Präferenz |
 | Architektur | **MVVM** (Views → ViewModel-Hooks → UseCases/Repository → DAO) | Explizite Anforderung; siehe Abschnitt 7 |
-| Lokale DB | **SQLite** (expo-sqlite/drizzle-orm) | Offline-first, relationales Datenmodell mit Umrechnungs- und Nährwerttabellen |
+| Lokale DB | **SQLite** (expo-sqlite über ein eigenes DbDriver-Port, kein ORM – Anhang C, T-1) | Offline-first, relationales Datenmodell mit Umrechnungs- und Nährwerttabellen |
 | Kalenderzugriff | expo-calendar / react-native-calendar-events, eigener Kalender „LifeCompanion“ | Native Kalender-Integration, siehe FA-200 |
 | Hintergrundjobs / Sync | expo-task-manager / expo-background-fetch | Periodischer Kalender-Sync und Import-Jobs |
 | State-/ViewModel-Binding | Zustand oder MobX als ViewModel-Layer | Leichtgewichtig, testbar |
@@ -212,7 +212,7 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-210 | Kalendereintrag vom Typ **„Essen/Rezept“** (FA-300) ist fachlich ebenfalls eine Aktivität mit Kategorie „Kochen/Rezepte“ und erbt Priorität, Beschreibung, Wiederholung etc. | M |
 | FA-211 | **Prioritäts-Semantik:** reine Warnungs-/Anzeige-Logik – *beschäftigt* löst die Überlappungs-Warnung aus (FA-203) und wird farblich hervorgehoben; *verfügbar* und *abwesend* beeinflussen nur Farbe/Anzeige, keine weitere Berechnungs- oder Auswertungslogik (Auswertung nach Priorität ggf. als Ausbaustufe) | M |
 | FA-212 | Serien-Editing: V1 bearbeitet eine Serie nur als Ganzes; „nur diesen Termin / alle / ab hier“ sowie Ausnahmen-Listen (Urlaub/Krankheit, `EXDATE`-Analogie) sind Ausbaustufe V2 | K |
-| FA-213 | **Serien-Expansion:** der RecurrenceResolver erzeugt die Instanzen einer Aktivität aus allen Wiederholungsregeln (FA-207) inkl. optionalem Serien-Ende; im Systemkalender existieren nur die expandierten Einzel-Events | M |
+| FA-213 | **Serien-Expansion:** der RecurrenceResolver erzeugt die Instanzen einer Aktivität aus allen Wiederholungsregeln (FA-207) inkl. optionalem Serien-Ende (inklusive); im Systemkalender existieren nur die expandierten Einzel-Events. Instanzen nutzen die **Wanduhr** des Ankers (keine UTC-Konversion → DST-fest, TC-REC-09) und erben Titel/Uhrzeit/Dauer vom Anker; nicht existierende Termine (31.02., 29.02.) werden übersprungen und als „ausgelassen“ markiert, nie auf Nachbardaten verschoben (TC-REC-04/05) | M |
 | FA-214 | **Kategorie-Filter:** die Wochenansicht lässt sich nach einer oder mehreren Kategorien filtern (Filter-Chips); nicht gefilterte Termine werden **ausgegraut** statt ausgeblendet, damit Layout und Zeilenausrichtung erhalten bleiben – leichtere Übersicht über z. B. nur Kochen oder nur Sport | M |
 
 ### 5.4 Rezepte, Zutaten, Nährwerte
@@ -245,7 +245,7 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-328 | Auch ein **einzelnes Lebensmittel** (ohne Rezept) kann über den Kalender als Aktivität „Essen“ erfasst werden | M |
 | FA-329 | **Energieberechnung (Brennwert-Ableitung, Entscheidung O-2):** kcal = Eiweiß × 4 + Kohlenhydrate × 4 + Fett × 9 (Atwater-Faktoren, bezogen auf g); Ballaststoffe werden mit × 2 kcal/g einberechnet ; Alkohol × 7 kcal/g (FA-323). Von externen Quellen gelieferte kcal-Angaben werden **nicht** in die Datenbank übernommen, sondern nur zum Rückvergleich neben die berechneten kcal gestellt; Abweichungen werden angezeigt (Quellen können abweichen, da sie andere Brennwertansätze nutzen) | M |
 | FA-340 | **Nährwert-Stufenmodell:** *Pflichtkern* = Eiweiß, Fett, Kohlenhydrate, Zucker, Ballaststoffe, Wasser – muss gefüllt sein, sonst schließt der abbrechbare Loop (FA-305) nicht ab. *Empfohlen* = 13 Vitamine, 13 Mineralstoffe/Spurenelemente – Füllung wird angefragt, Lücken sichtbar markiert, Speichern bleibt möglich. *Optional* = Lipide, Aminosäuren, Alkohol – freiwillig | M |
-| FA-341 | Lücken aus *Empfohlen/Optional* werden in der Detailansicht und Statistik (FA-600/601) als „offene Punkte“ markiert und in Zufuhr-Summen als „unvollständig erfasst“ ausgewiesen, nicht als 0 gezählt | M |
+| FA-341 | Lücken aus *Empfohlen/Optional* werden in der Detailansicht und Statistik (FA-600/601) als „offene Punkte“ markiert und in Zufuhr-Summen als „unvollständig erfasst“ ausgewiesen, nicht als 0 gezählt. Konkret (Rev. 14): eine erfasste Nährwert-Zeile mit Wert 0 ist eine **bewusste 0**; das **Fehlen** der Zeile (Nährstoff im Katalog, keine `ingredient_nutrient`-Zeile) markiert den Tag „unvollständig erfasst“ mit FA-800-Meldung (fehlende Pflichtwerte zusätzlich per Eingabeaufforderung, FA-340); vorhandene Teilwerte der betroffenen Instanz werden trotzdem aggregiert (TC-AGG-03) | M |
 
 #### 5.4.3 Einheiten und Umrechnung
 
@@ -307,8 +307,8 @@ Neben dem Kalender existiert das **Rezeptbuch** als eigene Ansicht im Hauptmenü
 | ID | Anforderung | Prio |
 |---|---|---|
 | FA-600 | **Ernährungsstatistik** pro Profil und Zeitraum (Tag/Woche/Monat/freier Zeitraum): zugeführte Gesamtmenge je Nährstoff, detailliert, gruppiert nach Nährwertkategorien | M |
-| FA-601 | **Durchschnitt pro Tag** im Vergleich zu den **DGE-Empfehlungen**, abhängig von Alter/Gewicht des Profils (Referenzwerte in einer Tabelle, nicht hart kodiert) | M |
-| FA-602 | Visualisierung: Balken-/Ring-Diagramme, Ampellogik (unter/innerhalb/über DGE), Tooltip mit Zahlenwerten | M |
+| FA-601 | **Durchschnitt pro Tag** im Vergleich zu den **DGE-Empfehlungen**, abhängig von Alter/Gewicht des Profils (Referenzwerte in einer Tabelle, nicht hart kodiert). Ausgestaltung (Rev. 14): `reference_dge.empfohlen_tag` steht in der **Anzeigeeinheit** des Nährstoffs pro Tag, intern wird auf µg normiert (`empfohlen_tag × normfaktor_nach_µg`); fehlt die passende Zeile (unseeded Altersgruppe/Geschlecht), erscheint „Referenzwert fehlt – ergänzen/überspringen“ (FA-800) – **kein stiller Fallback** auf eine andere Altersgruppe | M |
+| FA-602 | Visualisierung: Balken-/Ring-Diagramme, Ampellogik (unter/innerhalb/über DGE), Tooltip mit Zahlenwerten. Schwellen (Rev. 14): „innerhalb“ = **± 10 %** um die Empfehlung (relative Toleranz, K-Default); reine Anzeige-Logik, nie eine Sperre | M |
 | FA-603 | **Aktivitätsstatistik im Profil:** wie viel Zeit in welcher **Kategorie** mit welchen Aktivitäten verbracht wurde; geschätzter **Kalorienverbrauch** aus Vorlagen-kcal/h × Dauer (orientierend) | M |
 | FA-604 | Vergleich zweier Zeiträume | K |
 | FA-610 | **Zähllogik für die Zufuhr:** Intake = Σ über alle Kalender-Einträge vom Typ „Essen/Rezept“ bzw. „Essen/Zutat“ × Portionsanzahl im Zeitraum. Teilportionen (z. B. 0,5) sind erlaubt. Reste-Abrechnung („nur die Hälfte gegessen“ mit Portionsangabe beim Eintrag) als Ausbaustufe | M |
@@ -422,7 +422,7 @@ Hinweise zum Modell:
 │  KalenderRepository (SQLite + expo-calendar) · RezeptRepository ·   │
 │  IngredientRepository · PurchaseRepository · ExportRepository       │
 ├─────────────── Datenquellen ──────────────────────────────────────┤
-│  SQLite (lokal, Single Source of Truth, expo-sqlite/drizzle) ·      │
+│  SQLite (lokal, Single Source of Truth, expo-sqlite über DbDriver-Port) ·      │
 │  Systemkalender (expo-calendar, Sync via expo-task-manager) ·       │
 │  In-App-Backend (fetch/axios, REST/JSON)                           │
 └───────────────────────────────────────────────────────────────────┘
@@ -453,6 +453,9 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | **M6 – Statistiken** | Ernährungs- und Aktivitätsstatistik, DGE-Vergleich, Profil-Wechsel und -Vergleich, **Mangel-Prognose mit Schließungs-Vorschlägen (FA-613/614)**, Rezeptbuch-Vorschlagsansicht tagesweise (FA-362), Kategorie-Filter (FA-612) |
 | **M7 – Export/Import, Sprachen & Feinschliff** | JSON-Export/Import, **Mehrsprachigkeit DE/EN/FR/IT/ES (FA-106)**, **Preis-/Mengenverläufe und Marktvorschläge (FA-408/409)**, Design-Feinschliff, Stabilitätstest |
 | **M8 – Ausbaustufe** | iOS über dieselbe Codebasis (O-1), Serien-Editing und Ausnahmen (FA-212), Grundumsatz-Bilanz (FA-611), Reste-Abrechnung (FA-610), Verbrauchs-Rezeptvorschläge (FA-405), **Kamera-Barcode-Scanner (FA-411)**, **Bluetooth-Teilen zwischen Geräten (FA-910–912, V3)**, weitere Such-Provider |
+
+**Umsetzungsstand (Rev. 14):** M1 abgeschlossen (DB-Artefakte + Scaffold). Die **M2-Domänenlogik ist vollständig umgesetzt und getestet** (PR #142–#145): UnitConverter, DAOs + RecipeRepository (abbrechbarer unresolved-Loop, FA-305), Bestand/FIFO/MHD, RecurrenceResolver (Wanduhr/DST-fest), NutritionAggregator + DgeComparator – 64 automatisierte Tests (L1/L2) in CI je PR. Die UI-Ebene (Wochenansicht, Sync-Schicht) folgt.
+
 ## 10. Abnahmekriterien
 
 1. Alle **M**-Anforderungen sind laut Test-Katalog (FA-854) bestanden; kein unvollständiger Pflichtkern-Loop offen (FA-340).
@@ -478,7 +481,7 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | Parser-Bruch nach Website-Rework | Falsche/leere Vorschläge | Parser im In-App-Backend versioniert (FA-500), Validierung vor Masken-Füllung (FA-501) |
 | Android-Batterieoptimierung stoppt Hintergrund-Sync | Kalender-Sync hinkt | Zusätzlich Sync on-start/on-change statt nur Background-Job; Nutzer-Hinweis |
 | Eingebettetes Node-Runtime inkompatibel (nodejs-mobile + Expo, Geräteunterschiede) | Backend startet nicht | Fallback lokale Suche + manuelle Erfassung (FA-500); Kompatibilität früh in M3 testen |
-| Multi-DB-Komplexität (drizzle, mehrere Verbindungen, FA-851) | Fehlverhalten bei Profilwechsel | DB-Integrationstests pro Migrationslevel (FA-854) |
+| Multi-DB-Komplexität (mehrere offene DB-Verbindungen, FA-851) | Fehlverhalten bei Profilwechsel | DB-Integrationstests pro Migrationslevel (FA-854) |
 | F-Droid-Repro-Builds mit React Native | Vertrieb verzögert | Dependencies festnageln, keine Binär-Blobs, Build-Pipeline früh einrichten |
 | Große Ranges (bis 1 Jahr) in Rezeptbuch/Prognose | Performance-Einbruch, Akkuverbrauch | Virtualisierung + inkrementelle/vorberechnete Tages-Aggregation (FA-360); Umfang in Abnahmekriterium 11 geprüft |
 | DGE-Referenzwerte-Lizenz | Tabelle evtl. nicht frei verteilbar | Referenzwerte als Seed-Daten (FA-852) mit Quellenangabe, nutzeranpassbar |
@@ -517,5 +520,22 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | 9 (→ v0.10) | Einkaufsplanung aus Fehlbeständen (FA-406, Einkaufsdetails Markt/Produktkategorie/Menge/Preis (FA-407), Marktvorschlag + Preis-/Mengenverläufe rein lokal (FA-408/409, O-6), Barcode-Feld mit OFF-Lookup ab V1 (FA-410, O-7), Kamera-Scanner V2 (FA-411), Bluetooth-Teilen V3 (FA-910–912), Mehrsprachigkeit DE/EN/FR/IT/ES (FA-106), Wiederholungstypen kombinierbar (FA-207a) |
 | 10 (→ v0.11) | Datenschutz für alle externen Anfragen (auch Rezept-/Barcode-Suchen) präzisiert; Provider-Einwilligung: einmalige Zustimmung pro Provider, protokolliert und widerrufbar (FA-507, O-8); Offline-Funktion: Kern offline, Online nur auf Anforderung, Ergebnis-Cache (FA-508) |
 | 11 (→ v0.12) | Datenbank-Entwurf (FA-850) in `docs/datamodel.md` ausgearbeitet: zwei DB-Dateien (`app.db` + eine je Profil), 25 Tabellen, kcal-View, Seed-Katalog, Migrationen, Test-Fixtures; Skizze in Abschnitt 6 bleibt Überblick, Ausgestaltung ist dort verlinkt |
-| 13 (→ v0.14) | Test-Katalog (FA-854/855) in `docs/testkatalog.md` ausgearbeitet: Testpyramide L1–L6 (Vitest/jest-expo/Maestro), TC-Gruppen für Berechnungslogik (Energie, Umrechnung, µg-Normierung, Recurrence, Portion, Aggregation, DGE, Prognose), Bestand/FIFO, Kalender-Sync, DB-Integration, Backend-Vertrag, Provider-Fixtures, Export/Import, UI-Smoke der Abläufe 4.1–4.11, i18n, Performance/Barrierefreiheit; deterministische Fixtures, Abnahme-Traceability 1–14, CI-Konventionen, offene Punkte F-1…F-6 |
 | 12 (→ v0.13) | API-Vertrag des In-App-Backends in `docs/proxy-api.md` ausgearbeitet: Loopback-Prinzipien, Handshake/Bootstrap, 9 Endpunkte, Draft-Schemas (FA-504), Consent-Erzwingung (FA-507), Offline-Pfad (FA-508), Fehlermodell (FA-503), Adapter-Interface, Testbarkeit; Anhang A um O-8 (fehlend) und O-9 ergänzt |
+| 13 (→ v0.14) | Test-Katalog (FA-854/855) in `docs/testkatalog.md` ausgearbeitet: Testpyramide L1–L6 (Vitest/jest-expo/Maestro), TC-Gruppen für Berechnungslogik (Energie, Umrechnung, µg-Normierung, Recurrence, Portion, Aggregation, DGE, Prognose), Bestand/FIFO, Kalender-Sync, DB-Integration, Backend-Vertrag, Provider-Fixtures, Export/Import, UI-Smoke der Abläufe 4.1–4.11, i18n, Performance/Barrierefreiheit; deterministische Fixtures, Abnahme-Traceability 1–14, CI-Konventionen, offene Punkte F-1…F-6 |
+
+| 14 (→ v0.15) | Erster Umsetzungs-Durchlauf dokumentiert: M1 (DB-Artefakte, Scaffold) und die M2-Domänenlogik (UnitConverter, DAOs/Repository, FIFO/MHD/Portion, RecurrenceResolver, NutritionAggregator/DgeComparator) fertig mit 64 automatisierten Tests in CI; **Anhang C (T-1…T-7)** mit verbindlichen Präzisierungen (DbDriver-Port statt ORM, Wanduhr/DST-Semantik, „fehlt ≠ 0“, FIFO/Bestand, Ampel ± 10 %, Altersgruppen-Mapping, Teststand); FA-213/341/601/602 um Ausgestaltungshinweise erweitert; Umsetzungsstand in Abschnitt 9; drizzle-Bezüge durch die umgesetzte DbDriver-Port-Entscheidung ersetzt |
+
+### Anhang C – Technische Präzisierungen aus der Umsetzung (M1/M2)
+
+Aus der laufenden Umsetzung entstandene verbindliche Präzisierungen – jeweils mit FA-Anker und TC-Abdeckung.
+Sie wenden die FA-Anforderungen an, ohne sie zu ändern.
+
+| ID | Thema | Präzisierung |
+|---|---|---|
+| **T-1** | Treiber-Abstraktion | Das `DbDriver`-Port (`execScript`/`run`/`all`/`close`) mit zwei Implementierungen: `NodeDriver` (better-sqlite3, Tests/CI) und `ExpoDriver` (expo-sqlite, Laufzeit); beide aktivieren `PRAGMA foreign_keys = ON`. Migrationen/Seeds werden aus den Verzeichnissen `migrations/` bzw. `seed/` als sortierte SQL-Schritte geladen; `schema_version`/`seed_version` werden aus dem `NNNN_`-Dateipräfix abgeleitet. **Kein ORM** – explizites SQL pro DAO |
+| **T-2** | Serien-Semantik | `expandiere()`/`expandiereAlle()` liefern Wanduhr-Instanzen (`YYYY-MM-DDTHH:MM`, UTC-los → DST-fest, TC-REC-09); Instanzen erben Titel/Uhrzeit/Dauer vom Anker via `instanzFuer()`; Enddatum inklusive (TC-REC-07); nicht existierende Termine (31.02., 29.02.) werden als `ausgelassen` markiert, nie auf Nachbardaten verschoben (TC-REC-04/05); mehrere Regeln einer Aktivität → duplikatfreie Vereinigung (TC-REC-06) |
+| **T-3** | Mengen-Umrechnung | Priorität: Zutat-Override (`ingredient_unit_override`) > Dichte > Seed-Default (`default_g_faktor_ml`); ohne Grundlage → `menge_basis: null` + Hinweis (FA-334/FA-800); `parseMenge` akzeptiert Komma (FA-330) |
+| **T-4** | Bestand/FIFO | Kaufmengen werden beim Anlegen intern normiert (kg→g, l→ml); FIFO-Abbuchung mit Zuteilungsliste; Bestand bleibt ≥ 0, Mehrbedarf steht als `deckungsluecke` (FA-401); MHD-Warnung nur für Posten mit MHD (FA-404) |
+| **T-5** | Lücken-Semantik | „fehlt“ ≠ „bewusste 0“ (FA-341/TC-NRM-05): eine Zeile mit `wert = 0` ist vorhanden; das Fehlen einer Zeile eines Katalog-Nährstoffs (unabhängig von der Stufe) markiert den Tag „unvollständig erfasst“ mit FA-800-Meldung; vorhandene Teilwerte werden trotzdem aggregiert (kein stiller Totalausfall) |
+| **T-6** | DGE-Vergleich | `reference_dge.empfohlen_tag` in Anzeigeeinheit pro Tag, intern µg via `normfaktor_nach_µg`; Ampel „innerhalb“ = ± 10 % (relative Toleranz, K-Default); Altersgruppen 15-19 / 19-25 / 25-51 / 51-65 / 65+ (K-Default-Mapping aus dem Profil-Alter); fehlende Gruppe oder Geschlecht „divers“ ohne Seed → „Referenzwert fehlt“ (FA-800), **kein stiller Fallback**; DGE-Seed (aktuell nur 25-51, m/w, FA-852) bleibt verbindlich in M3 zu prüfen |
+| **T-7** | Teststand | 64 automatisierte Tests (L1/L2, Vitest) decken TC-ENE, TC-UMR, TC-NRM (04/05), TC-REC, TC-POR, TC-FIF, TC-AGG, TC-DGE ab; CI (GitHub Actions, node 22) mit Test+Typecheck auf jeden PR (F-1/F-4 aktiv); Mapping in `docs/testkatalog.md` Abschnitt 10 |
