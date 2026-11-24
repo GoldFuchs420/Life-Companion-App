@@ -1,6 +1,6 @@
 # Lastenheft: LifeCompanion
 
-**Version:** 0.5 · **Status:** Kernentscheidungen O-1 … O-5 (Abschnitt 9) plus Review-Klärungen aus Rev. 4 (Serien-Sync, Nährwert-Stufenmodell, eingebettetes Backend, Abnahmekriterien und Risikoregister) · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
+**Version:** 0.6 · **Status:** Kernentscheidungen O-1 … O-5 (Abschnitt 9), Review-Klärungen Rev. 4 und Scope-Erweiterungen Rev. 5 (Kategorie-Filter, Mangel-Prognose, Verbrauchs-Rezeptvorschläge) · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
 
 ## 1. Zielsetzung
 
@@ -25,6 +25,7 @@ LifeCompanion ist eine mobile Begleit-App zur Organisation des Alltags und der E
 | Suchprovider | Austauschbarer Online-Quellenservice (z. B. naehrwertrechner.de, fddb, rewe.de/rezepte) |
 | Priorität | Attribut einer Aktivität: *beschäftigt*, *abwesend*, *verfügbar* |
 | DGE | Deutsche Gesellschaft für Ernährung; Quelle der Referenzwerte |
+| Mangel-Prognose | Bedarf (DGE) minus erwartete Zufuhr der nächsten x Tage aus den geplanten Essen-Einträgen (FA-613) |
 
 ## 3. Systemlandschaft und Stack
 
@@ -125,6 +126,7 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-211 | **Prioritäts-Semantik (Rev. 4):** reine Warnungs-/Anzeige-Logik – *beschäftigt* löst die Überlappungs-Warnung aus (FA-203) und wird farblich hervorgehoben; *verfügbar* und *abwesend* beeinflussen nur Farbe/Anzeige, keine weitere Berechnungs- oder Auswertungslogik (Auswertung nach Priorität ggf. als Ausbaustufe) | M |
 | FA-212 | Serien-Editing: V1 bearbeitet eine Serie nur als Ganzes; „nur diesen Termin / alle / ab hier“ sowie Ausnahmen-Listen (Urlaub/Krankheit, `EXDATE`-Analogie) sind Ausbaustufe V2 | K |
 | FA-213 | **Serien-Expansion (Rev. 4):** der RecurrenceResolver erzeugt die Instanzen einer Aktivität aus allen Wiederholungsregeln (FA-207) inkl. optionalem Serien-Ende; im Systemkalender existieren nur die expandierten Einzel-Events | M |
+| FA-214 | **Kategorie-Filter (Rev. 5):** die Wochenansicht lässt sich nach einer oder mehreren Kategorien filtern (Filter-Chips); nicht gefilterte Termine werden **ausgegraut** statt ausgeblendet, damit Layout und Zeilenausrichtung erhalten bleiben – leichtere Übersicht über z. B. nur Kochen oder nur Sport | M |
 
 ### 4.4 Rezepte, Zutaten, Nährwerte
 
@@ -178,6 +180,7 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-402 | Pro Bestandsposten Nährwerte anzeigen. Fehlt das Nährwertprofil lokal → Suche (Suchprovider) oder manuelle Anlage der Zutat | M |
 | FA-403 | Kennzeichnung „tiefgekühlt / trocken / …“ als Zusatzattribut (reine Information, keine Logik in V1) | S |
 | FA-404 | **MHD/Verfallsdatum (Rev. 4):** optionales Feld pro Bestandsposten; Warnliste „läuft bald ab / ist abgelaufen“; ohne MHD-Datum bleibt der Posten einfach ohne Warnung | S |
+| FA-405 | **Verbrauchs-Rezeptvorschläge (V2, Rev. 5):** aus der MHD-Warnliste und der Bestandsliste lässt sich ein Modus „Verwende was da ist“ starten; die App schlägt Rezepte vor, die den (MHD-kritischen) Bestand möglichst vollständig verwenden, und zeigt an, welche Zutaten zum Bestand passen und welche fehlen | K |
 
 ### 4.6 Suchprovider, Parser, Proxy
 
@@ -202,6 +205,9 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-604 | Vergleich zweier Zeiträume | K |
 | FA-610 | **Zähllogik für die Zufuhr (Rev. 4):** Intake = Σ über alle Kalender-Einträge vom Typ „Essen/Rezept“ bzw. „Essen/Zutat“ × Portionsanzahl im Zeitraum. Teilportionen (z. B. 0,5) sind erlaubt. Reste-Abrechnung („nur die Hälfte gegessen“ mit Portionsangabe beim Eintrag) als Ausbaustufe | M |
 | FA-611 | **Grundumsatz/Energiebilanz:** Grundumsatz (Mifflin-St-Jeor aus Gewicht/Größe/Alter/Geschlecht) × PAL-Faktor als Gesamtumsatz, Bilanz gegen die Zufuhr aus FA-610 – Ausbaustufe V2 | K |
+| FA-612 | **Kategorie-Filter (Rev. 5):** dieselbe Filter-Chip-Logik wie FA-214 gilt auch in den Statistiken (Zeitraum × Kategorie); gefilterte Anteile werden ausgegraut/transparent gezeigt statt entfernt | S |
+| FA-613 | **Mangel-Prognose (V1, Rev. 5):** die App erkennt, welche Nährstoffe in den **nächsten x Tagen** noch fehlen (x konfigurierbar, Standard 7). Berechnung: DGE-Bedarf (FA-601) × x − erwartete Zufuhr laut geplanten Essen-Einträgen inkl. einer Aggregation der Wiederholungs-Instanzen (FA-610, FA-213). Anzeige je Nährstoff als Liste/Ring mit Ampel; Tage mit „unvollständig erfassten“ Daten werden entsprechend gekennzeichnet, nicht als 0 gezählt (FA-341) | M |
+| FA-614 | **Schließungs-Vorschläge (V1, Rev. 5):** zu jeder Prognose-Lücke werden Lebensmittel- und Rezept-Vorschläge vorgeschlagen, die die Lücke schlössen (z. B. Nüsse, Snacks, Getränke), mit Menge, die die Lücke abdeckt. Vorschlags-Reihenfolge: 1. lokal vorrätige Zutaten (Bestand), 2. lokal gespeicherte Zutaten/Rezepte, 3. externe Suche über das In-App-Backend (FA-502). Ein Vorschlag lässt sich per Tap als Essen-Eintrag in den Kalender übernehmen | M |
 
 ### 4.8 Robustheit, Eingabelogik
 
@@ -265,6 +271,8 @@ purchase_item(id, purchase_id, ingredient_id, menge, einheit, zustand,     -- z.
               mhd NULL, uebrig_gelassen NULL)                              -- MHD (FA-404); Reste-Anteil K (FA-610)
 
 reference_dge(nutrient_id, altersgruppe, geschlecht, empfohlen_tag)        -- Referenzwerte, nicht hart kodiert
+
+settings(schluessel, wert)   -- u. a. Prognose-Horizont in Tagen (FA-613), Standard-Kategorien-Filter (FA-214)
 ```
 
 Hinweise zum Modell:
@@ -277,13 +285,13 @@ Hinweise zum Modell:
 | Meilenstein | Inhalt |
 |---|---|
 | **M1 – Fundament** | Projektsetup, **Datenbankentwurf (ER-Modell, Schemadefinition, Migrationen)**, Seed-Daten-Anlage, Profil-CRUD inkl. **Profil-Datenbanken (FA-851)**, MVVM-Gerüst, Design-System, **Test-Katalog-Anlage (FA-854)** |
-| **M2 – Kalender & Aktivitäten** | Wochenansicht, Aktivitäten, Wiederholungen, Prioritäten, Kategorien, Vorlagen, Kalender-Sync |
+| **M2 – Kalender & Aktivitäten** | Wochenansicht, Aktivitäten, Wiederholungen, Prioritäten, Kategorien, Vorlagen, Kalender-Sync, Kategorie-Filter (FA-214) |
 | **M3 – Zutaten & Rezepte** | Zutaten-CRUD mit Nährwertprofil, Rezept-CRUD, Portions- und Einheiten-Umrechnung, lokale Suche, **Parser-Proxy (Node/TS) mit Provider-Adaptern** (Open Food Facts zuerst, darauf folgend die Website-Provider) |
 | **M4 – Integration Kochen** | Aktivität „Kochen“ mit Rezeptvorschlag, Teilschritte, Portionen, Nährwertdetails |
 | **M5 – Bestand & Einkäufe** | Einkaufserfassung, Bestandsliste inkl. **FIFO-Abbuchung (FA-401, Rev. 4)**, MHD-Warnliste (FA-404), Warn-/Nachfrage-Logik (FA-800) |
-| **M6 – Statistiken** | Ernährungs- und Aktivitätsstatistik, DGE-Vergleich, Profil-Wechsel und -Vergleich |
+| **M6 – Statistiken** | Ernährungs- und Aktivitätsstatistik, DGE-Vergleich, Profil-Wechsel und -Vergleich, **Mangel-Prognose mit Schließungs-Vorschlägen (FA-613/614)**, Kategorie-Filter (FA-612) |
 | **M7 – Export/Import & Feinschliff** | JSON-Export/Import, Design-Feinschliff, Stabilitätstest |
-| **M8 – Ausbaustufe** | iOS über dieselbe Codebasis (O-1, Rev. 2), Serien-Editing und Ausnahmen (FA-212), Grundumsatz-Bilanz (FA-611), Reste-Abrechnung (FA-610), weitere Such-Provider |
+| **M8 – Ausbaustufe** | iOS über dieselbe Codebasis (O-1, Rev. 2), Serien-Editing und Ausnahmen (FA-212), Grundumsatz-Bilanz (FA-611), Reste-Abrechnung (FA-610), Verbrauchs-Rezeptvorschläge (FA-405), weitere Such-Provider |
 
 ## 7. MVVM-Schichten (React Native / TypeScript)
 
@@ -341,6 +349,8 @@ Nachtrag zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-8
 6. Bei deaktiviertem In-App-Backend bleibt die App voll nutzbar ohne externe Suche (FA-500).
 7. Export → Import auf leerer Installation rekonstruiert alle Profildaten inkl. Kalender-Einträgen (FA-104).
 8. Zielplattform: **Android 10+ (API 29, Entscheidung Rev. 4)**; UI-Smoke-Tests auf Referenzgerät; Zielband 400–600 kcal erscheint nur als Anzeige (FA-302).
+9. Mangel-Prognose: für den konfigurierbaren Horizont (Standard 7 Tage) wird je Nährstoff „Bedarf − geplante Zufuhr“ angezeigt; ein Schließungs-Vorschlag lässt sich per Tap als Essen-Eintrag in den Kalender übernehmen (FA-613/614).
+10. Kategorie-Filter: gefilterte Wochenansicht lädt schnell und zeigt nicht gefilterte Termine ausgegraut (FA-214).
 
 ## 11. Risikoregister (Rev. 4)
 
@@ -353,3 +363,4 @@ Nachtrag zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-8
 | Multi-DB-Komplexität (drizzle, mehrere Verbindungen, FA-851) | Fehlverhalten bei Profilwechsel | DB-Integrationstests pro Migrationslevel (FA-854) |
 | F-Droid-Repro-Builds mit React Native | Vertrieb verzögert | Dependencies festnageln, keine Binär-Blobs, Build-Pipeline früh einrichten |
 | DGE-Referenzwerte-Lizenz | Tabelle evtl. nicht frei verteilbar | Referenzwerte als Seed-Daten (FA-852) mit Quellenangabe, nutzeranpassbar |
+| Prognose basiert auf geplanten, nicht konsumierten Einträgen | Mangel-Prognose kann Wirklichkeit verfehlen | Ausweis als Planungs-/Prognose-Wert; Kennzeichnung unvollständig erfasster Tage (FA-341); Abgleich mit tatsächlicher Zufuhr (FA-610) in der Rückblick-Statistik |
