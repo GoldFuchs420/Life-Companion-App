@@ -1,6 +1,6 @@
 # Lastenheft: LifeCompanion
 
-**Version:** 0.6 · **Status:** Kernentscheidungen O-1 … O-5 (Abschnitt 9), Review-Klärungen Rev. 4 und Scope-Erweiterungen Rev. 5 (Kategorie-Filter, Mangel-Prognose, Verbrauchs-Rezeptvorschläge) · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
+**Version:** 0.7 · **Status:** Kernentscheidungen O-1 … O-5 (Abschnitt 9), Review-Klärungen Rev. 4, Scope-Erweiterungen Rev. 5 und Rezeptbuch Rev. 6 · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
 
 ## 1. Zielsetzung
 
@@ -26,6 +26,7 @@ LifeCompanion ist eine mobile Begleit-App zur Organisation des Alltags und der E
 | Priorität | Attribut einer Aktivität: *beschäftigt*, *abwesend*, *verfügbar* |
 | DGE | Deutsche Gesellschaft für Ernährung; Quelle der Referenzwerte |
 | Mangel-Prognose | Bedarf (DGE) minus erwartete Zufuhr der nächsten x Tage aus den geplanten Essen-Einträgen (FA-613) |
+| Rezeptbuch | Ansicht im Hauptmenü: geplante Rezepte/Lebensmittel tagesweise gelistet mit Nährwerten und Vorschlägen (FA-360 ff.) |
 
 ## 3. Systemlandschaft und Stack
 
@@ -90,7 +91,7 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 
 | ID | Anforderung | Prio |
 |---|---|---|
-| FA-001 | Hauptmenü mit Einträgen: Kalender, Aktivitäten/Vorlagen, Kategorien, Rezepte, Zutaten/Lebensmittel, Bestand/Einkäufe, Profile, Statistiken, Einstellungen, Export/Import | M |
+| FA-001 | Hauptmenü mit Einträgen: Kalender, **Rezeptbuch (Tagesplan),** Aktivitäten/Vorlagen, Kategorien, Rezepte, Zutaten/Lebensmittel, Bestand/Einkäufe, Profile, Statistiken, Einstellungen, Export/Import | M |
 | FA-002 | Menüeinträge mit Icon + beschrifteter Fläche; Design siehe FA-900 | M |
 
 ### 4.2 Profile
@@ -169,6 +170,17 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-332 | Externe Angaben wie „1,5 TL Zucker“ oder „2 Tassen Mehl“ werden über die Tabelle automatisch in g/ml umgerechnet | M |
 | FA-333 | Mengenangaben in Rezepten werden intern auf g/ml normiert und daraus hochgerechnet (Rezept → 1 Portion → N Portionen) | M |
 | FA-334 | Fehlt eine Umrechnungsregel → nicht-abrupte Eingabeaufforderung statt Berechnung mit erdachten Werten (FA-800) | M |
+
+#### 4.4.4 Rezeptbuch (Tagesplan)
+
+Neben dem Kalender existiert das **Rezeptbuch** als eigene Ansicht im Hauptmenü: der Essens-Plan, tagesweise gelistet.
+
+| ID | Anforderung | Prio |
+|---|---|---|
+| FA-360 | **Rezeptbuch-Ansicht (Rev. 6):** im Hauptmenü als eigener Punkt; listet Tage chronologisch (Standard: die kommende Woche, Zeitraum frei wählbar). Pro Tag: alle geplanten Essen-/Rezept-Einträge und Einzel-Lebensmittel aus dem Kalender – zusammengeführt inkl. der expandierten Wiederholungs-Instanzen (FA-213) – mit Titel, Portionsanzahl und den berechneten Nährwerten (kcal + Pflichtkern-Makros; volle Details per Tap, FA-325) | M |
+| FA-361 | **Tages-Summen:** je Tag die Summe der geplanten Zufuhr direkt vergleichbar mit dem DGE-Bedarf des Profils (Ampel-Logik wie FA-602); Lücken-Tage werden sichtbar markiert (FA-341) | M |
+| FA-362 | **Vorschlags-Sichtbarkeit:** die Schließungs-Vorschläge der Mangel-Prognose (FA-614) und die Verbrauchs-Vorschläge (FA-405, V2) erscheinen **im Rezeptbuch tagesweise** auf dem jeweiligen Tag und sind dort per Tap als Essen-Eintrag für genau diesen Tag übernehmbar | M |
+| FA-363 | **Keine separate Datenhaltung:** das Rezeptbuch ist eine Anzeige-/Bearbeitungs-Abkürzung; Single Source of Truth bleiben Kalender-/Rezept-Datenbank. Verschieben/Löschen im Rezeptbuch wirkt auf den Kalender-Eintrag; Löschen eines Rezepts markiert betroffene Tage sichtbar | M |
 | FA-335 | **Rohmengen-Annahme (Rev. 4):** Nährwerte gelten für Rohware; alle Mengen werden in Rohmengen erfasst (z. B. Reis roh, nicht gekocht). Gewichtsverlust/-gewinn durchs Kochen (Wasserverlust) wird in V1 nicht modelliert; die Portionsrechnung bleibt auf Rohmengen | M |
 
 ### 4.5 Bestand / Einkäufe
@@ -287,9 +299,9 @@ Hinweise zum Modell:
 | **M1 – Fundament** | Projektsetup, **Datenbankentwurf (ER-Modell, Schemadefinition, Migrationen)**, Seed-Daten-Anlage, Profil-CRUD inkl. **Profil-Datenbanken (FA-851)**, MVVM-Gerüst, Design-System, **Test-Katalog-Anlage (FA-854)** |
 | **M2 – Kalender & Aktivitäten** | Wochenansicht, Aktivitäten, Wiederholungen, Prioritäten, Kategorien, Vorlagen, Kalender-Sync, Kategorie-Filter (FA-214) |
 | **M3 – Zutaten & Rezepte** | Zutaten-CRUD mit Nährwertprofil, Rezept-CRUD, Portions- und Einheiten-Umrechnung, lokale Suche, **Parser-Proxy (Node/TS) mit Provider-Adaptern** (Open Food Facts zuerst, darauf folgend die Website-Provider) |
-| **M4 – Integration Kochen** | Aktivität „Kochen“ mit Rezeptvorschlag, Teilschritte, Portionen, Nährwertdetails |
+| **M4 – Integration Kochen** | Aktivität „Kochen“ mit Rezeptvorschlag, Teilschritte, Portionen, Nährwertdetails, **Rezeptbuch-Grundansicht (FA-360/361/363)** |
 | **M5 – Bestand & Einkäufe** | Einkaufserfassung, Bestandsliste inkl. **FIFO-Abbuchung (FA-401, Rev. 4)**, MHD-Warnliste (FA-404), Warn-/Nachfrage-Logik (FA-800) |
-| **M6 – Statistiken** | Ernährungs- und Aktivitätsstatistik, DGE-Vergleich, Profil-Wechsel und -Vergleich, **Mangel-Prognose mit Schließungs-Vorschlägen (FA-613/614)**, Kategorie-Filter (FA-612) |
+| **M6 – Statistiken** | Ernährungs- und Aktivitätsstatistik, DGE-Vergleich, Profil-Wechsel und -Vergleich, **Mangel-Prognose mit Schließungs-Vorschlägen (FA-613/614)**, Rezeptbuch-Vorschlagsansicht tagesweise (FA-362), Kategorie-Filter (FA-612) |
 | **M7 – Export/Import & Feinschliff** | JSON-Export/Import, Design-Feinschliff, Stabilitätstest |
 | **M8 – Ausbaustufe** | iOS über dieselbe Codebasis (O-1, Rev. 2), Serien-Editing und Ausnahmen (FA-212), Grundumsatz-Bilanz (FA-611), Reste-Abrechnung (FA-610), Verbrauchs-Rezeptvorschläge (FA-405), weitere Such-Provider |
 
@@ -297,7 +309,8 @@ Hinweise zum Modell:
 
 ```
 ┌─────────────── View (React-Komponenten) ───────────────────────────┐
-│  KalenderScreen · RezeptScreen · StatistikScreen · CRUD-Masken ·   │
+│  KalenderScreen · RezeptbuchScreen (Tagesplan) · RezeptScreen ·     │
+│  StatistikScreen · CRUD-Masken ·                                    │
 │  MainScreen (Hauptmenü)                                             │
 ├─────────────── ViewModel (Zustand-/MobX-Store + Selektoren) ───────┤
 │  KalenderViewModel · RezeptViewModel · BestandViewModel ·           │
@@ -351,6 +364,7 @@ Nachtrag zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-8
 8. Zielplattform: **Android 10+ (API 29, Entscheidung Rev. 4)**; UI-Smoke-Tests auf Referenzgerät; Zielband 400–600 kcal erscheint nur als Anzeige (FA-302).
 9. Mangel-Prognose: für den konfigurierbaren Horizont (Standard 7 Tage) wird je Nährstoff „Bedarf − geplante Zufuhr“ angezeigt; ein Schließungs-Vorschlag lässt sich per Tap als Essen-Eintrag in den Kalender übernehmen (FA-613/614).
 10. Kategorie-Filter: gefilterte Wochenansicht lädt schnell und zeigt nicht gefilterte Termine ausgegraut (FA-214).
+11. Rezeptbuch: die Tagesansicht listet geplante Rezepte/Lebensmittel mit Nährwerten und Tages-Summen; Vorschläge sind pro Tag sichtbar und per Tap in den Kalender übernehmbar (FA-360–363).
 
 ## 11. Risikoregister (Rev. 4)
 
