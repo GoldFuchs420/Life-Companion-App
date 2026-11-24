@@ -1,6 +1,6 @@
 # Lastenheft: LifeCompanion
 
-**Version:** 0.7 · **Status:** Kernentscheidungen O-1 … O-5 (Abschnitt 9), Review-Klärungen Rev. 4, Scope-Erweiterungen Rev. 5 und Rezeptbuch Rev. 6 · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
+**Version:** 0.8 · **Status:** Kernentscheidungen O-1 … O-5 (Abschnitt 9), Review-Klärungen Rev. 4, Scope-Erweiterungen Rev. 5, Rezeptbuch Rev. 6, Prognose-/Betrachtungsfenster Rev. 7 (freie Ranges bis 1 Jahr) · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
 
 ## 1. Zielsetzung
 
@@ -25,7 +25,7 @@ LifeCompanion ist eine mobile Begleit-App zur Organisation des Alltags und der E
 | Suchprovider | Austauschbarer Online-Quellenservice (z. B. naehrwertrechner.de, fddb, rewe.de/rezepte) |
 | Priorität | Attribut einer Aktivität: *beschäftigt*, *abwesend*, *verfügbar* |
 | DGE | Deutsche Gesellschaft für Ernährung; Quelle der Referenzwerte |
-| Mangel-Prognose | Bedarf (DGE) minus erwartete Zufuhr der nächsten x Tage aus den geplanten Essen-Einträgen (FA-613) |
+| Mangel-Prognose | Bedarf (DGE) minus erwartete Zufuhr im Prognose-Fenster aus den geplanten Essen-Einträgen; Fenster einstellbar, Standard 2 Wochen (FA-613) |
 | Rezeptbuch | Ansicht im Hauptmenü: geplante Rezepte/Lebensmittel tagesweise gelistet mit Nährwerten und Vorschlägen (FA-360 ff.) |
 
 ## 3. Systemlandschaft und Stack
@@ -177,7 +177,7 @@ Neben dem Kalender existiert das **Rezeptbuch** als eigene Ansicht im Hauptmenü
 
 | ID | Anforderung | Prio |
 |---|---|---|
-| FA-360 | **Rezeptbuch-Ansicht (Rev. 6):** im Hauptmenü als eigener Punkt; listet Tage chronologisch (Standard: die kommende Woche, Zeitraum frei wählbar). Pro Tag: alle geplanten Essen-/Rezept-Einträge und Einzel-Lebensmittel aus dem Kalender – zusammengeführt inkl. der expandierten Wiederholungs-Instanzen (FA-213) – mit Titel, Portionsanzahl und den berechneten Nährwerten (kcal + Pflichtkern-Makros; volle Details per Tap, FA-325) | M |
+| FA-360 | **Rezeptbuch-Ansicht (Rev. 6):** im Hauptmenü als eigener Punkt; listet Tage chronologisch. **Rev. 7 (Betrachtungsfenster):** der Zeitraum wird **im Rezeptbuch selbst** gewählt – Standard die kommende Woche, sonst **beliebige Range bis ein ganzes Jahr** (Starttag + Länge; Voreinstellungen 1/2/4 Wochen). Bei langen Ranges werden Tage virtualisiert (nur sichtbare Bereiche rendern), Tageszusammenfassungen werden vor- oder inkrementell aggregiert. Pro Tag: alle geplanten Essen-/Rezept-Einträge und Einzel-Lebensmittel aus dem Kalender – zusammengeführt inkl. der expandierten Wiederholungs-Instanzen (FA-213) – mit Titel, Portionsanzahl und den berechneten Nährwerten (kcal + Pflichtkern-Makros; volle Details per Tap, FA-325) | M |
 | FA-361 | **Tages-Summen:** je Tag die Summe der geplanten Zufuhr direkt vergleichbar mit dem DGE-Bedarf des Profils (Ampel-Logik wie FA-602); Lücken-Tage werden sichtbar markiert (FA-341) | M |
 | FA-362 | **Vorschlags-Sichtbarkeit:** die Schließungs-Vorschläge der Mangel-Prognose (FA-614) und die Verbrauchs-Vorschläge (FA-405, V2) erscheinen **im Rezeptbuch tagesweise** auf dem jeweiligen Tag und sind dort per Tap als Essen-Eintrag für genau diesen Tag übernehmbar | M |
 | FA-363 | **Keine separate Datenhaltung:** das Rezeptbuch ist eine Anzeige-/Bearbeitungs-Abkürzung; Single Source of Truth bleiben Kalender-/Rezept-Datenbank. Verschieben/Löschen im Rezeptbuch wirkt auf den Kalender-Eintrag; Löschen eines Rezepts markiert betroffene Tage sichtbar | M |
@@ -218,8 +218,8 @@ Neben dem Kalender existiert das **Rezeptbuch** als eigene Ansicht im Hauptmenü
 | FA-610 | **Zähllogik für die Zufuhr (Rev. 4):** Intake = Σ über alle Kalender-Einträge vom Typ „Essen/Rezept“ bzw. „Essen/Zutat“ × Portionsanzahl im Zeitraum. Teilportionen (z. B. 0,5) sind erlaubt. Reste-Abrechnung („nur die Hälfte gegessen“ mit Portionsangabe beim Eintrag) als Ausbaustufe | M |
 | FA-611 | **Grundumsatz/Energiebilanz:** Grundumsatz (Mifflin-St-Jeor aus Gewicht/Größe/Alter/Geschlecht) × PAL-Faktor als Gesamtumsatz, Bilanz gegen die Zufuhr aus FA-610 – Ausbaustufe V2 | K |
 | FA-612 | **Kategorie-Filter (Rev. 5):** dieselbe Filter-Chip-Logik wie FA-214 gilt auch in den Statistiken (Zeitraum × Kategorie); gefilterte Anteile werden ausgegraut/transparent gezeigt statt entfernt | S |
-| FA-613 | **Mangel-Prognose (V1, Rev. 5):** die App erkennt, welche Nährstoffe in den **nächsten x Tagen** noch fehlen (x konfigurierbar, Standard 7). Berechnung: DGE-Bedarf (FA-601) × x − erwartete Zufuhr laut geplanten Essen-Einträgen inkl. einer Aggregation der Wiederholungs-Instanzen (FA-610, FA-213). Anzeige je Nährstoff als Liste/Ring mit Ampel; Tage mit „unvollständig erfassten“ Daten werden entsprechend gekennzeichnet, nicht als 0 gezählt (FA-341) | M |
-| FA-614 | **Schließungs-Vorschläge (V1, Rev. 5):** zu jeder Prognose-Lücke werden Lebensmittel- und Rezept-Vorschläge vorgeschlagen, die die Lücke schlössen (z. B. Nüsse, Snacks, Getränke), mit Menge, die die Lücke abdeckt. Vorschlags-Reihenfolge: 1. lokal vorrätige Zutaten (Bestand), 2. lokal gespeicherte Zutaten/Rezepte, 3. externe Suche über das In-App-Backend (FA-502). Ein Vorschlag lässt sich per Tap als Essen-Eintrag in den Kalender übernehmen | M |
+| FA-613 | **Mangel-Prognose (V1, Rev. 5; Fenster Rev. 7):** die App erkennt, welche Nährstoffe im **Prognose-Fenster** noch fehlen. Das Fenster ist **einstellbar**: Standard **14 Tage (2 Wochen)** – Tagesauflösung ist für die Vorschlagsqualität zu unruhig, 2 Wochen glätten Tages- und Wochenzyklen sinnvoll; zulässig sind 1–365 Tage (bis ein ganzes Jahr). Berechnung: DGE-Bedarf (FA-601) × Fenstertage − erwartete Zufuhr der geplanten Essen-Einträge im Fenster inkl. Aggregation der Wiederholungs-Instanzen (FA-610, FA-213). Anzeige je Nährstoff als Liste/Ring mit Ampel; „unvollständig erfasste“ Tage werden gekennzeichnet, nicht als 0 gezählt (FA-341) | M |
+| FA-614 | **Schließungs-Vorschläge (V1, Rev. 5; Fenster Rev. 7):** zu jeder Prognose-Lücke werden Lebensmittel- und Rezept-Vorschläge vorgeschlagen, die die Lücke **im gewählten Prognose-Fenster** schlössen (z. B. Nüsse, Snacks, Getränke), mit Menge, die die Lücke über die Fensterlänge hinweg abdeckt. Vorschlags-Reihenfolge: 1. lokal vorrätige Zutaten (Bestand), 2. lokal gespeicherte Zutaten/Rezepte, 3. externe Suche über das In-App-Backend (FA-502). Ein Vorschlag lässt sich per Tap als Essen-Eintrag in den Kalender übernehmen | M |
 
 ### 4.8 Robustheit, Eingabelogik
 
@@ -284,7 +284,7 @@ purchase_item(id, purchase_id, ingredient_id, menge, einheit, zustand,     -- z.
 
 reference_dge(nutrient_id, altersgruppe, geschlecht, empfohlen_tag)        -- Referenzwerte, nicht hart kodiert
 
-settings(schluessel, wert)   -- u. a. Prognose-Horizont in Tagen (FA-613), Standard-Kategorien-Filter (FA-214)
+settings(schluessel, wert)   -- u. a. Prognose-Fenster in Tagen, Standard 14, 1–365 (FA-613), Standard-Kategorien-Filter (FA-214)
 ```
 
 Hinweise zum Modell:
@@ -362,9 +362,9 @@ Nachtrag zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-8
 6. Bei deaktiviertem In-App-Backend bleibt die App voll nutzbar ohne externe Suche (FA-500).
 7. Export → Import auf leerer Installation rekonstruiert alle Profildaten inkl. Kalender-Einträgen (FA-104).
 8. Zielplattform: **Android 10+ (API 29, Entscheidung Rev. 4)**; UI-Smoke-Tests auf Referenzgerät; Zielband 400–600 kcal erscheint nur als Anzeige (FA-302).
-9. Mangel-Prognose: für den konfigurierbaren Horizont (Standard 7 Tage) wird je Nährstoff „Bedarf − geplante Zufuhr“ angezeigt; ein Schließungs-Vorschlag lässt sich per Tap als Essen-Eintrag in den Kalender übernehmen (FA-613/614).
+9. Mangel-Prognose: für das einstellbare Fenster (Standard 14 Tage, 1–365) wird je Nährstoff „Bedarf − geplante Zufuhr“ angezeigt; ein Schließungs-Vorschlag (Menge bezogen auf das Fenster) lässt sich per Tap als Essen-Eintrag übernehmen (FA-613/614).
 10. Kategorie-Filter: gefilterte Wochenansicht lädt schnell und zeigt nicht gefilterte Termine ausgegraut (FA-214).
-11. Rezeptbuch: die Tagesansicht listet geplante Rezepte/Lebensmittel mit Nährwerten und Tages-Summen; Vorschläge sind pro Tag sichtbar und per Tap in den Kalender übernehmbar (FA-360–363).
+11. Rezeptbuch: die Tagesansicht listet geplante Rezepte/Lebensmittel mit Nährwerten und Tages-Summen – auch über eine von-bis-Range bis ein ganzes Jahr ohne spürbares Ruckeln (Virtualisierung); Vorschläge sind pro Tag sichtbar und per Tap in den Kalender übernehmbar (FA-360–363).
 
 ## 11. Risikoregister (Rev. 4)
 
@@ -376,5 +376,6 @@ Nachtrag zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-8
 | Eingebettetes Node-Runtime inkompatibel (nodejs-mobile + Expo, Geräteunterschiede) | Backend startet nicht | Fallback lokale Suche + manuelle Erfassung (FA-500); Kompatibilität früh in M3 testen |
 | Multi-DB-Komplexität (drizzle, mehrere Verbindungen, FA-851) | Fehlverhalten bei Profilwechsel | DB-Integrationstests pro Migrationslevel (FA-854) |
 | F-Droid-Repro-Builds mit React Native | Vertrieb verzögert | Dependencies festnageln, keine Binär-Blobs, Build-Pipeline früh einrichten |
+| Große Ranges (bis 1 Jahr) in Rezeptbuch/Prognose | Performance-Einbruch, Akkuverbrauch | Virtualisierung + inkrementelle/vorberechnete Tages-Aggregation (FA-360); Umfang in Abnahmekriterium 11 geprüft |
 | DGE-Referenzwerte-Lizenz | Tabelle evtl. nicht frei verteilbar | Referenzwerte als Seed-Daten (FA-852) mit Quellenangabe, nutzeranpassbar |
 | Prognose basiert auf geplanten, nicht konsumierten Einträgen | Mangel-Prognose kann Wirklichkeit verfehlen | Ausweis als Planungs-/Prognose-Wert; Kennzeichnung unvollständig erfasster Tage (FA-341); Abgleich mit tatsächlicher Zufuhr (FA-610) in der Rückblick-Statistik |
