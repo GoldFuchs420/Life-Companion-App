@@ -5,3 +5,4 @@ dist/
 *.tsbuildinfo
 npm-debug.log*
 .DS_Store
+coverage/
