@@ -1,6 +1,6 @@
 # Lastenheft: LifeCompanion
 
-**Version:** 0.3 · **Status:** Kernentscheidungen getroffen (O-1 … O-5, siehe Abschnitt 9; O-1 und O-5 in Rev. 2 geändert) · **Plattform-Ziel:** Android (iOS folgt über dieselbe Codebasis)
+**Version:** 0.4 · **Status:** Kernentscheidungen getroffen (O-1 … O-5, siehe Abschnitt 9; O-1 und O-5 in Rev. 2 geändert, Datenbank- und Testvorgaben in Rev. 3 ergänzt) · **Plattform-Ziel:** Android (iOS folgt über dieselbe Codebasis)
 
 ## 1. Zielsetzung
 
@@ -67,6 +67,8 @@ Der Proxy läuft im Heimnetz des Nutzers (F-Droid- und Datenschutz-Vorgabe: kein
 - **Single Source of Truth:** Die lokale SQLite-Datenbank. Der Systemkalender dient als Anzeige-/Synchronisationsziel, nicht als Datenquelle der App-Logik.
 - **Validierung statt Annahme:** Rechenfunktionen (Statistik, Portionsrechner) nutzen keine erdachten Werte, sondern fordern fehlende Eingaben an (FA-800).
 - **Proxy optional, App autonom:** Fällt der Parser-Proxy aus, funktioniert die App weiter; externe Suche ist dann nur nicht verfügbar.
+- **Ein Profil = eine Datenbank** (Entscheidung Rev. 3, siehe FA-851): strikte Isolation der Profildaten auf Datei-Ebene.
+- **Datenbankentwurf vor Umsetzung** (FA-850): erst das Schema, dann die App; das Schema bleibt während der Umsetzung anpassbar.
 
 ## 4. Funktionale Anforderungen
 
@@ -188,6 +190,17 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-801 | Für **jede** persistente Entität existiert eine Anzeige- und Eingabemaske (CRUD), konsistent aufgebaut | M |
 | FA-802 | Alle Statistik-, Kalender- und Rezeptrechnungen laufen über zentrale **Calculation-Services** mit Unit-Tests (Einheiten-Umrechnungen sind die häufigste Fehlerquelle) | M |
 
+### 4.8a Datenbankstruktur, Seed-Daten und Testfälle (Rev. 3)
+
+| ID | Anforderung | Prio |
+|---|---|---|
+| FA-850 | **Eigene Entwurfsphase für die Datenbankstruktur vor der App-Umsetzung:** ER-Modell und Tabellenschema werden zuerst vollständig entworfen und dokumentiert (Abschnitt 5 ist die Ausgangsskizze); Ziel-Datenbank ist **SQLite**. Anpassungen am Schema während der Umsetzung sind ausdrücklich erlaubt und werden versioniert (Migrationen statt Handumbau) | M |
+| FA-851 | **Jedes Profil erhält eine eigene Datenbank** (eine SQLite-Datei pro Profil). Profilwechsel = Datenbankwechsel; Löschen eines Profils löscht seine Datenbankdatei vollständig. Die nutzende DB-Library muss mehrere gleichzeitig verwaltete Datenbankverbindungen unterstützen (aktives Profil + Zugriff auf Katalog-/Referenztabellen) | M |
+| FA-852 | **Seed-Daten:** Datenbanken und Tabellen werden beim ersten Start bzw. bei der Profil-Anlage **vorab mit grundlegenden Daten gefüllt**: Einheiten-Umrechnungstabelle (FA-331), Standard-Kategorien (Sport, Arbeit, Studium, Kochen/Rezepte, Hygiene, Haushalt, …), Nährstoff-Katalog (alle Nährwerte mit Kategorie und Einheit, FA-323), DGE-Referenzwerte (FA-601) sowie optional einige Beispiel-Zutaten/Rezepte zum Einstieg | M |
+| FA-853 | Fehlen Seed-Daten (z. B. Datei beschädigt oder nicht mitgeliefert), werden die betroffenen Tabellen **leer angelegt** und die App läuft trotzdem (Prinzip FA-800); ein Hinweis bietet an, Seed-Daten erneut einzuspielen | M |
+| FA-854 | **Ausführliche Testfälle werden zusammen mit der App angelegt und gepflegt** (Test-Katalog im Projekt): Unit-Tests für Calculation-Services (Brennwert-Ableitung FA-329, Unit-Converter, RecurrenceResolver, PortionCalculator), DB-Integrationstests gegen jedes Schema-Migrationslevel, UI-Smoke-Tests der Kernflüsse. Jeder Testfall referenziert seine FA-ID, so bleibt das Lastenheft rückverfolgbar | M |
+| FA-855 | Testfälle nutzen die Seed-Daten als wiederverwendbare Test-Fixtures; ein separater Datensatz synthetischer Test-Profile/-Rezepte stellt deterministische Statistik-Ergebnisse sicher | S |
+
 ### 4.9 Design und Bedienbarkeit
 
 | ID | Anforderung | Prio |
@@ -197,6 +210,8 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-902 | Bedienbarkeit: Swipe-/Tap-Gesten im Kalender, Undo beim Löschen | S |
 
 ## 5. Datenmodell (Skizze)
+
+> Geltungsbereich: Dieses Schema ist Ausgangspunkt der Entwurfsphase (FA-850) und gilt **pro Profildatenbank** (FA-851); Seed-/Katalogdaten werden beim Anlegen jeder Profildatenbank eingespielt (FA-852).
 
 ```
 profile(id, name, geburtsdatum, geschlecht, gewicht_kg, groesse_cm, aktivitaetslevel)
@@ -237,7 +252,7 @@ Hinweise zum Modell:
 
 | Meilenstein | Inhalt |
 |---|---|
-| **M1 – Fundament** | Projektsetup, DB-Schema, Profil-CRUD, MVVM-Gerüst, Design-System |
+| **M1 – Fundament** | Projektsetup, **Datenbankentwurf (ER-Modell, Schemadefinition, Migrationen)**, Seed-Daten-Anlage, Profil-CRUD inkl. **Profil-Datenbanken (FA-851)**, MVVM-Gerüst, Design-System, **Test-Katalog-Anlage (FA-854)** |
 | **M2 – Kalender & Aktivitäten** | Wochenansicht, Aktivitäten, Wiederholungen, Prioritäten, Kategorien, Vorlagen, Kalender-Sync |
 | **M3 – Zutaten & Rezepte** | Zutaten-CRUD mit Nährwertprofil, Rezept-CRUD, Portions- und Einheiten-Umrechnung, lokale Suche, **Parser-Proxy (Node/TS) mit Provider-Adaptern** (Open Food Facts zuerst, darauf folgend die Website-Provider) |
 | **M4 – Integration Kochen** | Aktivität „Kochen“ mit Rezeptvorschlag, Teilschritte, Portionen, Nährwertdetails |
@@ -270,6 +285,8 @@ Hinweise zum Modell:
 ```
 
 ViewModels halten nur Darstellungszustand (Stores/Selektoren) und delegieren Berechnung an UseCases → Unit-Tests ohne UI möglich. Dependency Injection per Kontext-Factory oder Tsyringe.
+
+Nachtrag zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-851) sind die architektonische Vorgabe aus Abschnitt 4.8a; das Schema aus Abschnitt 5 wird in der Entwurfsphase (FA-850) verbindlich ausgearbeitet und darf während der Umsetzung paketweise angepasst werden.
 
 ## 8. Nicht-funktionale Anforderungen
 
