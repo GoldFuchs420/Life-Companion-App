@@ -307,7 +307,7 @@ hinterlegt („Golden Values“), um Regressionen sichtbar zu machen (FA-855).
 
 ## 10. Umsetzungsstand der TC-Gruppen
 
-Automatisierte Abdeckung nach dem M2-Domänenlogik-Durchlauf (Rev. 15, 71 Tests in CI; Coverage-Report optional per `npm run test:coverage`):
+Automatisierte Abdeckung nach dem M2-Domänenlogik-Durchlauf (Rev. 16, 80 Tests in CI; Coverage-Report optional per `npm run test:coverage`):
 
 | TC-Gruppe | Automatisiert in | Status |
 |---|---|---|
@@ -321,6 +321,7 @@ Automatisierte Abdeckung nach dem M2-Domänenlogik-Durchlauf (Rev. 15, 71 Tests 
 | TC-DGE (3) | `tests/db/dge.test.ts`, `tests/unit/nutritionHelpers.test.ts` | umgesetzt |
 | TC-OVR (01–04) | `tests/db/activity.test.ts` | umgesetzt |
 | FA-208/209 (Vorlagen), FA-603 (Aktivitätsstatistik) | `tests/db/activity.test.ts` | umgesetzt (Testfälle am Code über TC-OVR/FA-603-Namen) |
-| TC-KAL, TC-FEH, TC-API, TC-PRV, TC-EXP, TC-UI, TC-I18N, TC-PRF, TC-DBC (Rest) | – | offen (M3+) |
+| TC-KAL (01–05) | `tests/db/calendarSync.test.ts` | umgesetzt (Fake-Kalender über den SystemCalendarPort; LWW-Semantik siehe Anhang C, T-8 des Lastenhefts) |
+| TC-FEH, TC-API, TC-PRV, TC-EXP, TC-UI, TC-I18N, TC-PRF, TC-DBC (Rest) | – | offen (M3+) |
 
 Der Fragenkatalog wird dem Auftraggeber zur Beantwortung vorgelegt; bis dahin gelten die Voreinstellungen (siehe letzte Spalte).

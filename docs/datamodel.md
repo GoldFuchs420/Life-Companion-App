@@ -163,6 +163,22 @@ CREATE TABLE recurrence (                          -- FA-207a–d, mehrere pro A
 CREATE INDEX idx_recurrence_activity ON recurrence(aktivitaet_id);
 ```
 
+CREATE TABLE calendar_sync (                       -- FA-200/201/213 (Rev. 16, Migration 0002)
+  aktivitaet_id       TEXT    NOT NULL,          -- weiche Referenz auf activity(id): kein FK,
+                                                      -- damit das Loeschen der Aktivitaet die
+                                                      -- Mapping-Zeilen nicht mitnimmt (der Sync
+                                                      -- entfernt so auch die Geraete-Events)
+  ordinal             INTEGER NOT NULL,          -- Ordinal innerhalb der sortierten Instanzen
+  external_id         TEXT    NOT NULL UNIQUE,   -- Geraete-Event-ID des Systemkalenders
+  instanz_start       TEXT    NOT NULL,          -- 'YYYY-MM-DDTHH:MM' (Wanduhr)
+  titel               TEXT    NOT NULL,
+  ende                TEXT    NOT NULL,
+  zuletzt_geschrieben TEXT    NOT NULL           -- Wanduhr des letzten App-Pushs (LWW pro Instanz)
+);
+CREATE INDEX idx_calendar_sync_external ON calendar_sync(external_id);
+CREATE INDEX idx_calendar_sync_instanz  ON calendar_sync(instanz_start);
+```
+
 ### 4.3 Zutaten, Nährstoffe, Rezepte
 
 ```sql
