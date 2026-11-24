@@ -1,6 +1,6 @@
 # Lastenheft: LifeCompanion
 
-**Version:** 0.13 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4); DB-Design verbindlich in `docs/datamodel.md`, API-Vertrag des In-App-Backends verbindlich in `docs/proxy-api.md` (Rev. 12); Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
+**Version:** 0.14 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4); DB-Design verbindlich in `docs/datamodel.md`, API-Vertrag des In-App-Backends verbindlich in `docs/proxy-api.md`, Test-Katalog verbindlich in `docs/testkatalog.md` (Rev. 13); Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
 
 ## 1. Zielsetzung
 
@@ -327,6 +327,8 @@ Neben dem Kalender existiert das **Rezeptbuch** als eigene Ansicht im Hauptmenü
 
 ### 5.9 Datenbankstruktur, Seed-Daten und Testfälle
 
+> Der **verbindliche Test-Katalog** (Testfall-Tabellen je FA-Gruppe, Fixtures, Traceability zu den Abnahmekriterien, CI-Ausführung) liegt in **[`docs/testkatalog.md`](testkatalog.md)**; FA-854/855 sind dort ausgegestaltet.
+
 | ID | Anforderung | Prio |
 |---|---|---|
 | FA-850 | **Eigene Entwurfsphase für die Datenbankstruktur vor der App-Umsetzung:** ER-Modell und Tabellenschema werden zuerst vollständig entworfen und dokumentiert (Abschnitt 6 ist die Ausgangsskizze); Ziel-Datenbank ist **SQLite**. Anpassungen am Schema während der Umsetzung sind ausdrücklich erlaubt und werden versioniert (Migrationen statt Handumbau) | M |
@@ -515,4 +517,5 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | 9 (→ v0.10) | Einkaufsplanung aus Fehlbeständen (FA-406, Einkaufsdetails Markt/Produktkategorie/Menge/Preis (FA-407), Marktvorschlag + Preis-/Mengenverläufe rein lokal (FA-408/409, O-6), Barcode-Feld mit OFF-Lookup ab V1 (FA-410, O-7), Kamera-Scanner V2 (FA-411), Bluetooth-Teilen V3 (FA-910–912), Mehrsprachigkeit DE/EN/FR/IT/ES (FA-106), Wiederholungstypen kombinierbar (FA-207a) |
 | 10 (→ v0.11) | Datenschutz für alle externen Anfragen (auch Rezept-/Barcode-Suchen) präzisiert; Provider-Einwilligung: einmalige Zustimmung pro Provider, protokolliert und widerrufbar (FA-507, O-8); Offline-Funktion: Kern offline, Online nur auf Anforderung, Ergebnis-Cache (FA-508) |
 | 11 (→ v0.12) | Datenbank-Entwurf (FA-850) in `docs/datamodel.md` ausgearbeitet: zwei DB-Dateien (`app.db` + eine je Profil), 25 Tabellen, kcal-View, Seed-Katalog, Migrationen, Test-Fixtures; Skizze in Abschnitt 6 bleibt Überblick, Ausgestaltung ist dort verlinkt |
+| 13 (→ v0.14) | Test-Katalog (FA-854/855) in `docs/testkatalog.md` ausgearbeitet: Testpyramide L1–L6 (Vitest/jest-expo/Maestro), TC-Gruppen für Berechnungslogik (Energie, Umrechnung, µg-Normierung, Recurrence, Portion, Aggregation, DGE, Prognose), Bestand/FIFO, Kalender-Sync, DB-Integration, Backend-Vertrag, Provider-Fixtures, Export/Import, UI-Smoke der Abläufe 4.1–4.11, i18n, Performance/Barrierefreiheit; deterministische Fixtures, Abnahme-Traceability 1–14, CI-Konventionen, offene Punkte F-1…F-6 |
 | 12 (→ v0.13) | API-Vertrag des In-App-Backends in `docs/proxy-api.md` ausgearbeitet: Loopback-Prinzipien, Handshake/Bootstrap, 9 Endpunkte, Draft-Schemas (FA-504), Consent-Erzwingung (FA-507), Offline-Pfad (FA-508), Fehlermodell (FA-503), Adapter-Interface, Testbarkeit; Anhang A um O-8 (fehlend) und O-9 ergänzt |
