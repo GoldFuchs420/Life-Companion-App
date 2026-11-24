@@ -1,0 +1,7 @@
+node_modules/
+.expo/
+dist/
+*.db
+*.tsbuildinfo
+npm-debug.log*
+.DS_Store
