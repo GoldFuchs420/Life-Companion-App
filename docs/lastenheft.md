@@ -1,6 +1,6 @@
 # Lastenheft: LifeCompanion
 
-**Version:** 0.11 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4), Anforderungen danach; Einkaufsplanung, Barcode, Mehrsprachigkeit (Rev. 9), Provider-Einwilligung + Offline-Funktion (Rev. 10); Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
+**Version:** 0.12 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4); DB-Design verbindlich ausgearbeitet in `docs/datamodel.md` (Rev. 11); Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
 
 ## 1. Zielsetzung
 
@@ -353,7 +353,7 @@ Neben dem Kalender existiert das **Rezeptbuch** als eigene Ansicht im Hauptmenü
 
 ## 6. Datenmodell (Skizze)
 
-> Geltungsbereich: Dieses Schema ist Ausgangspunkt der Entwurfsphase (FA-850) und gilt **pro Profildatenbank** (FA-851); Seed-/Katalogdaten werden beim Anlegen jeder Profildatenbank eingespielt (FA-852).
+> Geltungsbereich: Dieses Schema ist Ausgangspunkt der Entwurfsphase (FA-850) und gilt **pro Profildatenbank** (FA-851); Seed-/Katalogdaten werden beim Anlegen jeder Profildatenbank eingespielt (FA-852). Die **verbindliche Ausgestaltung** (ER-Modell, vollständiges DDL, Seed-Inhalte, Migrationen, Test-Fixtures) liegt in **[`docs/datamodel.md`](datamodel.md)**; Abweichungen zwischen Skizze und Ausgestaltung sind dort dokumentiert.
 
 ```
 profile(id, name, geburtsdatum, geschlecht, gewicht_kg, groesse_cm, aktivitaetslevel)
@@ -508,5 +508,6 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | 6 | Rezeptbuch als Tagesplan-Ansicht im Hauptmenü (FA-360–363) |
 | 7 | Prognose-Fenster einstellbar (Standard 14 Tage, 1–365), Rezeptbuch-Range im Rezeptbuch selbst wählbar bis 1 Jahr mit Virtualisierung (FA-360/613/614) |
 | 10 (→ v0.11) | Datenschutz für alle externen Anfragen (auch Rezept-/Barcode-Suchen) präzisiert; Provider-Einwilligung: einmalige Zustimmung pro Provider, protokolliert und widerrufbar (FA-507, O-8); Offline-Funktion: Kern offline, Online nur auf Anforderung, Ergebnis-Cache (FA-508) |
+| 11 (→ v0.12) | Datenbank-Entwurf (FA-850) in `docs/datamodel.md` ausgearbeitet: zwei DB-Dateien (`app.db` + eine je Profil), 25 Tabellen, kcal-View, Seed-Katalog, Migrationen, Test-Fixtures; Skizze in Abschnitt 6 bleibt Überblick, Ausgestaltung ist dort verlinkt |
 | 9 (→ v0.10) | Einkaufsplanung aus Fehlbeständen (FA-406, Einkaufsdetails Markt/Produktkategorie/Menge/Preis (FA-407), Marktvorschlag + Preis-/Mengenverläufe rein lokal (FA-408/409, O-6), Barcode-Feld mit OFF-Lookup ab V1 (FA-410, O-7), Kamera-Scanner V2 (FA-411), Bluetooth-Teilen V3 (FA-910–912), Mehrsprachigkeit DE/EN/FR/IT/ES (FA-106), Wiederholungstypen kombinierbar (FA-207a) |
 | 8 (→ v0.9) | Restrukturierung: neuer Abschnitt 4 „Anwendungsabläufe“ (zehn Nutzerflüsse mit FA-Querverweisen), Meilensteine als Phasenplanung hinter die NFA verschoben, Datenbank-/Seed-/Test-Abschnitt als 5.9 in die Anforderungen integriert, inline Rev.-Markierungen in Anhang B ausgelagert, veraltete „Proxy im Heimnetz“-Formulierungen durch die Entscheidung „eingebettetes Backend auf 127.0.0.1“ ersetzt |
