@@ -307,7 +307,7 @@ hinterlegt („Golden Values“), um Regressionen sichtbar zu machen (FA-855).
 
 ## 10. Umsetzungsstand der TC-Gruppen
 
-Automatisierte Abdeckung nach dem M2-Domänenlogik-Durchlauf (Rev. 16, 80 Tests in CI; Coverage-Report optional per `npm run test:coverage`):
+Automatisierte Abdeckung nach dem M3-Proxy-API-Durchlauf (Rev. 17, 94 Tests in CI; Coverage-Report optional per `npm run test:coverage`):
 
 | TC-Gruppe | Automatisiert in | Status |
 |---|---|---|
@@ -322,6 +322,7 @@ Automatisierte Abdeckung nach dem M2-Domänenlogik-Durchlauf (Rev. 16, 80 Tests 
 | TC-OVR (01–04) | `tests/db/activity.test.ts` | umgesetzt |
 | FA-208/209 (Vorlagen), FA-603 (Aktivitätsstatistik) | `tests/db/activity.test.ts` | umgesetzt (Testfälle am Code über TC-OVR/FA-603-Namen) |
 | TC-KAL (01–05) | `tests/db/calendarSync.test.ts` | umgesetzt (Fake-Kalender über den SystemCalendarPort; LWW-Semantik siehe Anhang C, T-8 des Lastenhefts) |
-| TC-FEH, TC-API, TC-PRV, TC-EXP, TC-UI, TC-I18N, TC-PRF, TC-DBC (Rest) | – | offen (M3+) |
+| TC-API (01–12, Kern) | `tests/backend/proxy.test.ts` (Fastify `inject`, FakeAdapter statt Netz) | Kern umgesetzt: Loopback-Bind (01), Handshake ok/Block nach falscher Major (02/03), deaktivierter Provider (04), CONSENT_REQUIRED/REVOKED ohne Adapter-Abruf (05/06), Cache-Offline-Pfad (07), kein Hintergrund-Verkehr (08), PARSE_FAILED/NOT_FOUND-Barcode (09), Draft-Vorbefüllung E6/E7 (10/12), Anfrage-Protokoll (11); echte Provider-Fixtures folgen in TC-PRV |
+| TC-FEH, TC-PRV, TC-EXP, TC-UI, TC-I18N, TC-PRF, TC-DBC (Rest) | – | offen (M3+) |
 
 Der Fragenkatalog wird dem Auftraggeber zur Beantwortung vorgelegt; bis dahin gelten die Voreinstellungen (siehe letzte Spalte).
