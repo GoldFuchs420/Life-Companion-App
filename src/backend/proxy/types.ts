@@ -127,6 +127,8 @@ export interface ProviderAdapter {
   readonly id: ProviderId;
   readonly kind: ProviderKind;
   readonly entities: readonly EntityKind[];
+  /** Pflicht nach FA-502, wenn der Provider Quellenangabe verlangt (z. B. Open Food Facts). */
+  readonly attribution?: string;
   /** Nur auf ausdrueckliche Nutzeraktion (FA-508); Timeout-Vorgaben Abschnitt 2. */
   search(query: SearchQuery): Promise<RawResult[]>;
   /** Nur fuer Barcode-Provider (FA-410). */

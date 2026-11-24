@@ -1,0 +1,49 @@
+{
+  "name": "Pizza Margherita",
+  "typ": "Hauptgericht",
+  "portionen": 1,
+  "steps": [
+    {
+      "laufnummer": 1,
+      "titel": "Teig zubereiten",
+      "dauerMin": 0
+    },
+    {
+      "laufnummer": 2,
+      "titel": "Pizza belegen und backen",
+      "dauerMin": 0
+    }
+  ],
+  "ingredients": [
+    {
+      "rohText": "500 g Mehl",
+      "menge": 500,
+      "einheit": "g",
+      "resolved": null,
+      "suggestion": null
+    },
+    {
+      "rohText": "1,5 TL Zucker",
+      "menge": 1.5,
+      "einheit": "TL",
+      "resolved": null,
+      "suggestion": null
+    },
+    {
+      "rohText": "250 ml Wasser",
+      "menge": 250,
+      "einheit": "ml",
+      "resolved": null,
+      "suggestion": null
+    },
+    {
+      "rohText": "1 Prise Salz",
+      "menge": 0,
+      "einheit": "Stueck",
+      "resolved": null,
+      "suggestion": null
+    }
+  ],
+  "providerKcal": 372,
+  "providerKcalHinweis": "kcal nur Rueckvergleich, nie gespeichert (FA-329)"
+}

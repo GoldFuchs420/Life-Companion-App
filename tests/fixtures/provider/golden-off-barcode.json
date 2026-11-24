@@ -1,0 +1,72 @@
+{
+  "name": "Kneta Haferflocken",
+  "basisEinheit": "g",
+  "stueckgewichtG": null,
+  "dichteGProMl": null,
+  "barcode": "4006381333931",
+  "nutrients": [
+    {
+      "nutrientName": "Eiweiß",
+      "wertNormiertPro100": 13700000,
+      "einheit": "g",
+      "stufe": "pflichtkern",
+      "angegeben": true
+    },
+    {
+      "nutrientName": "Fett",
+      "wertNormiertPro100": 7100000,
+      "einheit": "g",
+      "stufe": "pflichtkern",
+      "angegeben": true
+    },
+    {
+      "nutrientName": "Kohlenhydrate",
+      "wertNormiertPro100": 58700000,
+      "einheit": "g",
+      "stufe": "pflichtkern",
+      "angegeben": true
+    },
+    {
+      "nutrientName": "Zucker",
+      "wertNormiertPro100": 990000,
+      "einheit": "g",
+      "stufe": "pflichtkern",
+      "angegeben": true
+    },
+    {
+      "nutrientName": "Ballaststoffe",
+      "wertNormiertPro100": 10100000,
+      "einheit": "g",
+      "stufe": "pflichtkern",
+      "angegeben": true
+    },
+    {
+      "nutrientName": "Wasser",
+      "wertNormiertPro100": 9,
+      "einheit": "ml",
+      "stufe": "pflichtkern",
+      "angegeben": true
+    },
+    {
+      "nutrientName": "Vitamin C",
+      "wertNormiertPro100": 0,
+      "einheit": "mg",
+      "stufe": "empfohlen",
+      "angegeben": true
+    },
+    {
+      "nutrientName": "Vitamin B12",
+      "wertNormiertPro100": 0,
+      "einheit": "µg",
+      "stufe": "empfohlen",
+      "angegeben": true
+    },
+    {
+      "nutrientName": "Natrium",
+      "wertNormiertPro100": 4000,
+      "einheit": "mg",
+      "stufe": "empfohlen",
+      "angegeben": true
+    }
+  ]
+}
