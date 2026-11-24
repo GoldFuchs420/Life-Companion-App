@@ -249,7 +249,7 @@ unter `tests/fixtures/` (JSON/SQL), keine zur Laufzeit generierten Werte:
 | Fixture | Inhalt | Determinismus-Zweck |
 |---|---|---|
 | `fx-profile-test` | Profil „Test“: Geburtsdatum 1990-01-01, 70 kg, 175 cm, männlich, Aktiv-Level moderat | fester DGE-Vergleichssatz (FA-601) |
-| `fx-haferflocken` | 13 g P / 60 g KH / 7 g F / 8 g Ballaststoffe je 100 g (µg-normiert) | kcal-Parität 355,0 kcal (TC-ENE-01/TC-NRM-04) |
+| `fx-haferflocken` | 13 g P / 60 g KH / 7 g F je 100 g (µg-normiert); TC-ENE-02 ergänzt 8 g Ballaststoffe | kcal-Parität 355,0 kcal (TC-ENE-01/TC-NRM-04); mit Ballaststoffen 371,0 (Atwater O-2) |
 | `fx-karotte` | Basis-Einheit g, `stueckgewicht_g` = 80, umrechnungslos sonst | Stück-/Override-Pfad (TC-UMR-03/08) |
 | `fx-karotte-500g-300g` | zwei Einkäufe mit MHD-Datumsset | FIFO-/MHD-Fälle (TC-FIF-01/04) |
 | `fx-pizza` | 2 Teilschritte, 3 Zutatenzeilen (1 unresolved beim Import) | Rezept-Draft/Loop-Fälle (FA-300/305) |
