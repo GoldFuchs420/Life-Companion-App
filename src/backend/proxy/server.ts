@@ -345,7 +345,7 @@ export class ProxyServer {
       fidelity: this.fidelity(draft, missing),
       draft,
       missingNutrients: missing,
-      warnings: [],
+      warnings: adapter.attribution ? [adapter.attribution] : [],
     };
   }
 

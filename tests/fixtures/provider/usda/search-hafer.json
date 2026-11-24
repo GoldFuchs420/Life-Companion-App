@@ -1,0 +1,57 @@
+{
+  "totalHits": 1,
+  "foods": [
+    {
+      "fdcId": 173904,
+      "description": "Cereals, QUAKER, oats, instant, dry",
+      "gtinUpc": "0030000010204",
+      "foodNutrients": [
+        {
+          "nutrientName": "Protein",
+          "unitName": "G",
+          "value": 13.7
+        },
+        {
+          "nutrientName": "Total lipid (fat)",
+          "unitName": "G",
+          "value": 7.1
+        },
+        {
+          "nutrientName": "Carbohydrate, by difference",
+          "unitName": "G",
+          "value": 58.7
+        },
+        {
+          "nutrientName": "Sugars",
+          "unitName": "G",
+          "value": 0.99
+        },
+        {
+          "nutrientName": "Fiber, total dietary",
+          "unitName": "G",
+          "value": 10.1
+        },
+        {
+          "nutrientName": "Water",
+          "unitName": "G",
+          "value": 8.6
+        },
+        {
+          "nutrientName": "Sodium, Na",
+          "unitName": "MG",
+          "value": 38.0
+        },
+        {
+          "nutrientName": "Calcium, Ca",
+          "unitName": "MG",
+          "value": 54.0
+        },
+        {
+          "nutrientName": "Iron, Fe",
+          "unitName": "MG",
+          "value": 4.72
+        }
+      ]
+    }
+  ]
+}

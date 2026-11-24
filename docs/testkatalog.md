@@ -303,11 +303,11 @@ hinterlegt („Golden Values“), um Regressionen sichtbar zu machen (FA-855).
 | F-5 | Umfang der automatisierten UI-Flows: alle 12 TC-UI-Fälle oder nur M-Kern (01/02/05/09/11)? | M-Kern automatisiert, Rest manuell skriptgeprüft |
 | F-6 | Verwaltung des USDA-API-Keys (Backend-Config-Datei)? | Key nicht in Tests nötig (Fixtures), Konfiguration später |
 
-> **Stand (Rev. 14):** F-1 und F-4 sind aktiv umgesetzt (Vitest + GitHub Actions auf jeden PR, node 22); F-2/F-3/F-5/F-6 folgen den Voreinstellungen ohne Änderung.
+> **Stand (Rev. 18):** F-1 und F-4 sind aktiv umgesetzt (Vitest + GitHub Actions auf jeden PR, node 22); F-2/F-3/F-5/F-6 folgen den Voreinstellungen ohne Änderung.
 
 ## 10. Umsetzungsstand der TC-Gruppen
 
-Automatisierte Abdeckung nach dem M3-Proxy-API-Durchlauf (Rev. 17, 94 Tests in CI; Coverage-Report optional per `npm run test:coverage`):
+Automatisierte Abdeckung nach dem M3-Provider-Adapter-Durchlauf (Rev. 18, 114 Tests in CI; Coverage-Report optional per `npm run test:coverage`):
 
 | TC-Gruppe | Automatisiert in | Status |
 |---|---|---|
@@ -323,6 +323,7 @@ Automatisierte Abdeckung nach dem M3-Proxy-API-Durchlauf (Rev. 17, 94 Tests in C
 | FA-208/209 (Vorlagen), FA-603 (Aktivitätsstatistik) | `tests/db/activity.test.ts` | umgesetzt (Testfälle am Code über TC-OVR/FA-603-Namen) |
 | TC-KAL (01–05) | `tests/db/calendarSync.test.ts` | umgesetzt (Fake-Kalender über den SystemCalendarPort; LWW-Semantik siehe Anhang C, T-8 des Lastenhefts) |
 | TC-API (01–12, Kern) | `tests/backend/proxy.test.ts` (Fastify `inject`, FakeAdapter statt Netz) | Kern umgesetzt: Loopback-Bind (01), Handshake ok/Block nach falscher Major (02/03), deaktivierter Provider (04), CONSENT_REQUIRED/REVOKED ohne Adapter-Abruf (05/06), Cache-Offline-Pfad (07), kein Hintergrund-Verkehr (08), PARSE_FAILED/NOT_FOUND-Barcode (09), Draft-Vorbefüllung E6/E7 (10/12), Anfrage-Protokoll (11); echte Provider-Fixtures folgen in TC-PRV |
-| TC-FEH, TC-PRV, TC-EXP, TC-UI, TC-I18N, TC-PRF, TC-DBC (Rest) | – | offen (M3+) |
+| TC-PRV (01–06) | `tests/backend/providers.test.ts` (Fixtures + Golden-Drafts pro Provider, kein Netz FA-854/855) | umgesetzt: Golden-Drafts OFF/USDA/fddb/naehrwertrechner/rewe (01), PARSE_FAILED bei unlesbaren Seiten (02), Attributions-/Quellpflicht (03), Standard-Registry + USDA ohne Key (04), Barcode Treffer/Fehlbelegung (05), Host-Whitelist + HTTP-Fehler strukturiert (06) |
+| TC-FEH, TC-EXP, TC-UI, TC-I18N, TC-PRF, TC-DBC (Rest) | – | offen (M3+) |
 
 Der Fragenkatalog wird dem Auftraggeber zur Beantwortung vorgelegt; bis dahin gelten die Voreinstellungen (siehe letzte Spalte).

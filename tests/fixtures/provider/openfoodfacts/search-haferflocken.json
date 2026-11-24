@@ -1,0 +1,22 @@
+{
+  "count": 1,
+  "page_size": 10,
+  "products": [
+    {
+      "code": "4006381333931",
+      "product_name": "Kneta Haferflocken",
+      "product_name_de": "Kneta Haferflocken",
+      "nutriments": {
+        "proteins_100g": 13.7,
+        "fat_100g": 7.1,
+        "carbohydrates_100g": 58.7,
+        "sugars_100g": 0.99,
+        "fiber_100g": 10.1,
+        "water_100g": 8.6,
+        "vitamin-c_100g": 0.0,
+        "vitamin-b12_100g": 0.0,
+        "sodium_100g": 0.004
+      }
+    }
+  ]
+}
