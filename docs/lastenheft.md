@@ -1,6 +1,6 @@
 # Lastenheft: LifeCompanion
 
-**Version:** 0.4 · **Status:** Kernentscheidungen getroffen (O-1 … O-5, siehe Abschnitt 9; O-1 und O-5 in Rev. 2 geändert, Datenbank- und Testvorgaben in Rev. 3 ergänzt) · **Plattform-Ziel:** Android (iOS folgt über dieselbe Codebasis)
+**Version:** 0.5 · **Status:** Kernentscheidungen O-1 … O-5 (Abschnitt 9) plus Review-Klärungen aus Rev. 4 (Serien-Sync, Nährwert-Stufenmodell, eingebettetes Backend, Abnahmekriterien und Risikoregister) · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
 
 ## 1. Zielsetzung
 
@@ -40,23 +40,32 @@ Das Frontend ist **React Native mit Expo in TypeScript**; Android kommt zuerst, 
 | Kalenderzugriff | expo-calendar / react-native-calendar-events, eigener Kalender „LifeCompanion“ | Native Kalender-Integration, siehe FA-200 |
 | Hintergrundjobs / Sync | expo-task-manager / expo-background-fetch | Periodischer Kalender-Sync und Import-Jobs |
 | State-/ViewModel-Binding | Zustand oder MobX als ViewModel-Layer | Leichtgewichtig, testbar |
-| Networking (App) | fetch/axios, ausschließlich gegen den eigenen Parser-Proxy | Klare Schnittstelle, keine direkten Website-Zugriffe aus der App |
+| Networking (App) | fetch/axios, ausschließlich gegen das eingebettete Backend (127.0.0.1) | Klare Schnittstelle, keine direkten Website-Zugriffe aus der App |
 | Import/Export | JSON-Bundle (versioniert) | Siehe FA-104 |
-| Parser-/Provider-Schicht | **Node.js (TypeScript, Fastify) ab V1** | stabile Website-Parser und Provider-Adapter zentral gewartet, ohne App-Release nachzuschieben; TypeScript deckt die JS-Präferenz des Auftraggebers ab |
+| In-App-Backend (Parser-/Provider-Schicht) | **Node.js (TypeScript, Fastify), in die App eingebettet** (z. B. nodejs-mobile), lauscht ausschließlich auf 127.0.0.1 | Parser und Provider-Adapter zentral gewartet, ohne App-Release nachzuschieben; kein LAN-Exposure, kein separater Serverbetrieb nötig (Rev. 4) |
 
 **Folgentscheidung iOS:** Dank React Native kann iOS später **über dieselbe Codebasis** erfolgen; nur kalender- und plattformspezifische Native-Module werden pro Plattform gepflegt. Datenmodell- und Provider-Verträge gelten für beide Plattformen.
 
 ### 3.1.1 Systemkomponenten
 
 ```
-┌─────────────────────┐   REST (LAN/VPN)   ┌───────────────────────────┐
-│  LifeCompanion App   │ ─────────────────→ │  Parser-Proxy (Node/TS)    │
-│  React Native (Expo, │                    │  Provider-Adapter:         │
-│  TypeScript) · MVVM  │ ←───────────────── │  Open Food Facts, USDA,    │
-└─────────┬───────────┘   JSON (abgefragt)   │  naehrwertrechner, fddb,   │
-          │                                   │  rewe.de/rezepte           │
-          ▼                                   └───────────────────────────┘
-  SQLite (lokal) + Systemkalender „LifeCompanion“
+┌─────────────────────────────────────────────┐     ┌────────────────────────┐
+│  LifeCompanion App (Gerät)                  │     │  Provider (Internet)   │
+│  ┌───────────────────────────────────────┐  │     │  Open Food Facts,      │
+│  │ UI · React Native (Expo, TypeScript)  │  │     │  USDA,                 │
+│  │ MVVM (Stores → UseCases → Repos)      │  │     │  naehrwertrechner,     │
+│  └──────────────┬────────────────────────┘  │     │  fddb, rewe.de         │
+│                 │ localhost (127.0.0.1)     │     └───────────▲────────────┘
+│  ┌──────────────▼────────────────────────┐  │                 │
+│  │ In-App-Backend · Node.js (Fastify)    │──┼─────────────────┘
+│  │ Provider-Adapter + Website-Parser     │  │
+│  └───────────────────────────────────────┘  │
+│  SQLite (lokal) + Systemkalender            │
+└─────────────────────────────────────────────┘
+```
+
+Das In-App-Backend startet mit der App (Entscheidung Rev. 4: intern in der App als Backend, nur 127.0.0.1 – kein LAN-Exposure, daher keine Authentifizierung nötig) und ist in den Einstellungen deaktivierbar; ohne Backend stehen lokale Suche und manuelle Erfassung bereit.
+
 ```
 
 Der Proxy läuft im Heimnetz des Nutzers (F-Droid- und Datenschutz-Vorgabe: kein Cloud-Zwang). Er ist optional deaktivierbar; ohne Proxy stehen nur lokale Suche und manuelle Erfassung bereit.
@@ -66,7 +75,9 @@ Der Proxy läuft im Heimnetz des Nutzers (F-Droid- und Datenschutz-Vorgabe: kein
 - **Offline-first:** Alle Kernfunktionen funktionieren ohne Netz; online wird nur für Suchprovider/Parser benötigt.
 - **Single Source of Truth:** Die lokale SQLite-Datenbank. Der Systemkalender dient als Anzeige-/Synchronisationsziel, nicht als Datenquelle der App-Logik.
 - **Validierung statt Annahme:** Rechenfunktionen (Statistik, Portionsrechner) nutzen keine erdachten Werte, sondern fordern fehlende Eingaben an (FA-800).
-- **Proxy optional, App autonom:** Fällt der Parser-Proxy aus, funktioniert die App weiter; externe Suche ist dann nur nicht verfügbar.
+- **Backend eingebettet und austauschbar:** Das Node-Backend läuft als eigener Prozess im App-Kontext auf 127.0.0.1 (Rev. 4); fällt es aus, funktioniert die App weiter, nur die externe Suche bleibt aus.
+- **Serie in der App, Instanz im Systemkalender:** Serienlogik strikt intern, der Systemkalender erhält expandierte Einzel-Events (Rev. 4, FA-201/213).
+- **Rohmengen statt Kochzustand:** Nährwerte gelten für Rohware, Mengen werden in Rohmengen erfasst (Rev. 4, FA-335).
 - **Ein Profil = eine Datenbank** (Entscheidung Rev. 3, siehe FA-851): strikte Isolation der Profildaten auf Datei-Ebene.
 - **Datenbankentwurf vor Umsetzung** (FA-850): erst das Schema, dann die App; das Schema bleibt während der Umsetzung anpassbar.
 
@@ -97,20 +108,23 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | ID | Anforderung | Prio |
 |---|---|---|
 | FA-200 | **Lokaler Kalender „LifeCompanion“** entsprechend dem App-Namen wird als eigener Systemkalender integriert; App liest und schreibt ihn | M |
-| FA-201 | Kalender-Sync mit dem Systemkalender (bidirektional für die eigene Kalender-ID); Konfliktfälle (gleichzeitige Änderung) per „Last write wins“ mit dokumentierter Entscheidung | M |
+| FA-201 | Kalender-Sync mit dem Systemkalender (bidirektional für die eigene Kalender-ID). **Rev. 4:** Serienlogik bleibt ausschließlich in der App-DB (FA-207); der Systemkalender erhält die expandierten Instanzen als Einzel-Events. Konfliktfälle (gleichzeitige Änderung) per „Last write wins“ **pro Instanz**, dokumentiert | M |
 | FA-202 | **Wochenansicht 0–24 Uhr**, Tage als Spalten, Zeit als Zeilen; mehrere zeitgleiche Aktivitäten werden **nebeneinander** dargestellt | M |
 | FA-203 | Bei Überlappungen wird auf den Konflikt **hingewiesen** (visuelle Markierung + Hinweistext); die Überlappung wird nicht verhindert | M |
 | FA-204 | Navigation zwischen Wochen über ←/→-Buttons oder Swipe; Anzeige der **KW-Nummer** und der **Datumsspanne** (z. B. „KW 42 · 14.–20. Okt 2026“) | M |
 | FA-205 | Tap auf Tages-/Zeitzelle: neues Aktivitätsfenster mit vorbelegter Startzeit | M |
 | FA-206 | Aktivität: Titel, Beschreibung, **Zeitraum** (Beginn/Ende), **Kategorie**, **Priorität** (*beschäftigt*, *abwesend*, *verfügbar*), **Wiederholungen** (Liste), ggf. Referenz auf Rezept oder Vorlage | M |
 | FA-207 | **Mehrere Wiederholungen pro Aktivität**, jede mit eigenem Startdatum und **optionalem absolutem Enddatum** | M |
-| FA-207a | Wiederholungstyp: alle *x* Stunden / Tage / Wochen / Monate / Jahre (Intervall konfigurierbar) | |
-| FA-207b | Wiederholungstyp: immer am *x.* Tag des Monats | |
-| FA-207c | Wiederholungstyp: immer am *x.* Tag des Jahres (inkl. Schaltjahresregel) | |
-| FA-207d | Wiederholungstyp: an Wochentag(en) (Montag, Dienstag, …; Mehrfachauswahl) | |
+| FA-207a | Wiederholungstyp: alle *x* Stunden / Tage / Wochen / Monate / Jahre (Intervall konfigurierbar) | M |
+| FA-207b | Wiederholungstyp: immer am *x.* Tag des Monats | M |
+| FA-207c | Wiederholungstyp: immer am *x.* Tag des Jahres (inkl. Schaltjahresregel) | M |
+| FA-207d | Wiederholungstyp: an Wochentag(en) (Montag, Dienstag, …; Mehrfachauswahl) | M |
 | FA-208 | **Vorlagen:** Aktivitäten (nicht-kochen, z. B. „Radfahren“) als Vorlage speichern mit Titel, Beschreibung, Voreinstellung der Zeitspanne, Wiederholungen, Kategorie und optional **kcal-Verbrauch pro Stunde** (rein orientierend; leer/0 = „verbraucht keine Kalorien“, z. B. Hygiene, Haushalt) | M |
 | FA-209 | Aus Vorlage: Aktivität im Kalender instanziieren, Werte übernehmen, Zeitraum anpassen | M |
 | FA-210 | Kalendereintrag vom Typ **„Essen/Rezept“** (FA-300) ist fachlich ebenfalls eine Aktivität mit Kategorie „Kochen/Rezepte“ und erbt Priorität, Beschreibung, Wiederholung etc. | M |
+| FA-211 | **Prioritäts-Semantik (Rev. 4):** reine Warnungs-/Anzeige-Logik – *beschäftigt* löst die Überlappungs-Warnung aus (FA-203) und wird farblich hervorgehoben; *verfügbar* und *abwesend* beeinflussen nur Farbe/Anzeige, keine weitere Berechnungs- oder Auswertungslogik (Auswertung nach Priorität ggf. als Ausbaustufe) | M |
+| FA-212 | Serien-Editing: V1 bearbeitet eine Serie nur als Ganzes; „nur diesen Termin / alle / ab hier“ sowie Ausnahmen-Listen (Urlaub/Krankheit, `EXDATE`-Analogie) sind Ausbaustufe V2 | K |
+| FA-213 | **Serien-Expansion (Rev. 4):** der RecurrenceResolver erzeugt die Instanzen einer Aktivität aus allen Wiederholungsregeln (FA-207) inkl. optionalem Serien-Ende; im Systemkalender existieren nur die expandierten Einzel-Events | M |
 
 ### 4.4 Rezepte, Zutaten, Nährwerte
 
@@ -120,7 +134,7 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 |---|---|---|
 | FA-300 | In der Aktivität „Kochen“ (Kalender) werden gespeicherte Rezepte als Vorschlag angezeigt; Auswahl übernimmt Rezept-**Dauer** und ggf. **Teilschritte** (z. B. „Teig herrichten“ → „Pizza machen“) als sequenzielle Teil-Aktivitäten im selben Zeitraum-Block | M |
 | FA-301 | **Rezeptmenü** (eigener Menüpunkt): Rezepte anlegen, bearbeiten, löschen, suchen, kategorisieren (z. B. Hauptgericht / Getränk / Snack) | M |
-| FA-302 | Rezept enthält: Titel, Typ, Zubereitungsschritte, ggf. Unterteilung in Teilschritte, Zutatenliste; gilt **für eine Portion** im Zielbereich **400–600 kcal**, vorgeschlagen und geprüft von der App | M |
+| FA-302 | Rezept enthält: Titel, Typ, Zubereitungsschritte, ggf. Unterteilung in Teilschritte, Zutatenliste; gilt **für eine Portion**. **Rev. 4:** 400–600 kcal ist nur **Anzeige/Referenzwert** (die errechneten kcal pro Portion werden angezeigt), kein Muss und keine Sperre | M |
 | FA-303 | Beim Hinzufügen zum Kalender wählt der Nutzer die **Anzahl Portionen**; alle Nährwerte skalieren mit | M |
 | FA-304 | Beim Rezeptanlegen ist der **erste Suchschritt lokal** in der Datenbank; danach kann online gesucht werden (Suchprovider wählbar) und die Ergebnisse füllen automatisch die Eingabemaske. **Speichern/Commit erfolgt erst durch explizite Nutzerbestätigung.** | M |
 | FA-305 | **Abbrechbarer Loop** beim Rezept-Erstellen: prüft, ob für jede Rezeptzeile eine Zutat mit vollständigem Nährwertprofil existiert; falls nicht, führt der Loop Schritt für Schritt durch Suchen/Anlegen und kann jederzeit pausiert/abgebrochen werden (Zwischenstand bleibt erhalten) | M |
@@ -133,14 +147,16 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 |---|---|---|
 | FA-320 | Zutaten werden **immer in Gramm (g) oder Milliliter (ml)** geführt; die Basiseinheit wird beim Anlegen festgelegt und bleibt konstant (z. B. Karotte → g) | M |
 | FA-321 | Nährwertangaben beziehen sich auf **100 g bzw. 100 ml** (Referenz wie bei fddb / naehrwertrechner.de) | M |
-| FA-322 | Nährwerte werden **in Milligramm** gespeichert; der **Wasseranteil separat in Milliliter**. Energie (kcal) wird **nicht gespeichert**, sondern aus den Makro-Nährwerten abgeleitet (FA-329) | M |
-| FA-323 | Nährwertkategorien: Basis-Nährwerte (Eiweiß, Fett, Kohlenhydrate, Zucker, Ballaststoffe, **Wasser**) sowie **Vitamine, Mineralstoffe, Spurenelemente, Lipide (einfach/mehrfach ungesättigt), Aminosäuren, weitere** | M |
+| FA-322 | Nährwerte werden milligrammgenau gespeichert. **Rev. 4:** jeder Nährstoff führt seine **übliche Einheit** (mg; µg für B12, Vitamin D, Folsäure; ml für Wasser); intern werden alle Werte auf µg normiert gespeichert, das UI zeigt die übliche Einheit und rechnet Eingaben um. Energie (kcal) wird **nicht gespeichert**, sondern aus den Makro-Nährwerten abgeleitet (FA-329) | M |
+| FA-323 | Nährwertkategorien: Basis-Nährwerte (Eiweiß, Fett, Kohlenhydrate, Zucker, Ballaststoffe, **Wasser**) sowie **Vitamine, Mineralstoffe, Spurenelemente, Lipide (einfach/mehrfach ungesättigt), Aminosäuren, Alkohol (für Getränke, FA-307; 7 kcal/g), weitere** | M |
 | FA-324 | **Grundlegende Nährwerte** direkt sichtbar am Rezept: kcal, Eiweiß, Fett (gesättigt, einfach ungesättigt, mehrfach ungesättigt), Kohlenhydrate, davon Zucker, Wasser, Ballaststoffe | M |
 | FA-325 | **Detailansicht** pro Rezept/Zutat: alle verfügbaren Nährwerte, gruppiert nach Nährwertkategorien | S |
 | FA-326 | Zutaten können über **naehrwertrechner.de** abgerufen werden; der Nutzer **sichtet** die Werte (fddb als weitere Quelle optional) und übernimmt sie danach in die lokale Datenbank | M |
-| FA-327 | Fehlende Nährwerte lösen einen aktiven **Eingabe-Hinweis** aus, keinen Fehler. **Grundsätzlich müssen alle Nährwerte gefüllt sein**; „0 / nicht angegeben“ ist als bewusster Wert wählbar und unterscheidet sich im UI sichtbar von „fehlt“ | M |
+| FA-327 | Fehlende Nährwerte lösen einen aktiven **Eingabe-Hinweis** aus, keinen Fehler. Die Pflicht gilt über das **Stufenmodell (FA-340)**; „0 / nicht angegeben“ ist als bewusster Wert wählbar und unterscheidet sich im UI sichtbar von „fehlt“ | M |
 | FA-328 | Auch ein **einzelnes Lebensmittel** (ohne Rezept) kann über den Kalender als Aktivität „Essen“ erfasst werden | M |
-| FA-329 | **Energieberechnung (Brennwert-Ableitung, Entscheidung O-2):** kcal = Eiweiß × 4 + Kohlenhydrate × 4 + Fett × 9 (Atwater-Faktoren, bezogen auf g); Ballaststoffe optional mit × 2 kcal/g ergänzt, Alkohol (falls später geführt) × 7 kcal/g. Von externen Quellen gelieferte kcal-Angaben werden **nicht** in die Datenbank übernommen, sondern nur zum Rückvergleich neben die berechneten kcal gestellt; Abweichungen werden angezeigt | M |
+| FA-329 | **Energieberechnung (Brennwert-Ableitung, Entscheidung O-2):** kcal = Eiweiß × 4 + Kohlenhydrate × 4 + Fett × 9 (Atwater-Faktoren, bezogen auf g); Ballaststoffe werden mit × 2 kcal/g einberechnet (Festlegung Rev. 4); Alkohol × 7 kcal/g (FA-323). Von externen Quellen gelieferte kcal-Angaben werden **nicht** in die Datenbank übernommen, sondern nur zum Rückvergleich neben die berechneten kcal gestellt; Abweichungen werden angezeigt (Quellen können abweichen, da sie andere Brennwertansätze nutzen) | M |
+| FA-340 | **Nährwert-Stufenmodell (Rev. 4):** *Pflichtkern* = Eiweiß, Fett, Kohlenhydrate, Zucker, Ballaststoffe, Wasser – muss gefüllt sein, sonst schließt der abbrechbare Loop (FA-305) nicht ab. *Empfohlen* = 13 Vitamine, 13 Mineralstoffe/Spurenelemente – Füllung wird angefragt, Lücken sichtbar markiert, Speichern bleibt möglich. *Optional* = Lipide, Aminosäuren, Alkohol – freiwillig | M |
+| FA-341 | Lücken aus *Empfohlen/Optional* werden in der Detailansicht und Statistik (FA-600/601) als „offene Punkte“ markiert und in Zufuhr-Summen als „unvollständig erfasst“ ausgewiesen, nicht als 0 gezählt | M |
 
 #### 4.4.3 Einheiten und Umrechnung
 
@@ -151,26 +167,29 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-332 | Externe Angaben wie „1,5 TL Zucker“ oder „2 Tassen Mehl“ werden über die Tabelle automatisch in g/ml umgerechnet | M |
 | FA-333 | Mengenangaben in Rezepten werden intern auf g/ml normiert und daraus hochgerechnet (Rezept → 1 Portion → N Portionen) | M |
 | FA-334 | Fehlt eine Umrechnungsregel → nicht-abrupte Eingabeaufforderung statt Berechnung mit erdachten Werten (FA-800) | M |
+| FA-335 | **Rohmengen-Annahme (Rev. 4):** Nährwerte gelten für Rohware; alle Mengen werden in Rohmengen erfasst (z. B. Reis roh, nicht gekocht). Gewichtsverlust/-gewinn durchs Kochen (Wasserverlust) wird in V1 nicht modelliert; die Portionsrechnung bleibt auf Rohmengen | M |
 
 ### 4.5 Bestand / Einkäufe
 
 | ID | Anforderung | Prio |
 |---|---|---|
 | FA-400 | **Einkäufe erfassen:** Datum + Liste von Zutaten mit Mengen (z. B. „13.10.2026: 500 g Karotten, 1 kg Zucker, 500 g Brokkoli (TK)“) | M |
-| FA-401 | Eingaben werden in die **Bestandsliste** übertragen; Bestand steigt. Abverkauf durch Essen-Einträge kann im Bestand abgebucht werden (Option in den Einstellungen) | M |
+| FA-401 | Eingaben werden in die **Bestandsliste** übertragen; Bestand steigt. **Rev. 4: FIFO-Abbuchung ab V1** – Kochen/Essen-Einträge buchen mengen-genau vom Bestand ab (ältester Posten zuerst); reicht der Bestand nicht, wird die Deckungslücke angezeigt, ohne den Bestand unsichtbar negativ zu machen | M |
 | FA-402 | Pro Bestandsposten Nährwerte anzeigen. Fehlt das Nährwertprofil lokal → Suche (Suchprovider) oder manuelle Anlage der Zutat | M |
 | FA-403 | Kennzeichnung „tiefgekühlt / trocken / …“ als Zusatzattribut (reine Information, keine Logik in V1) | S |
+| FA-404 | **MHD/Verfallsdatum (Rev. 4):** optionales Feld pro Bestandsposten; Warnliste „läuft bald ab / ist abgelaufen“; ohne MHD-Datum bleibt der Posten einfach ohne Warnung | S |
 
 ### 4.6 Suchprovider, Parser, Proxy
 
 | ID | Anforderung | Prio |
 |---|---|---|
-| FA-500 | **Parser-Proxy (Node/TypeScript) ab V1** (Entscheidung O-4): ruft die Provider ab, parst strukturiert und liefert JSON an die App; dadurch Wartung der Parser ohne App-Update. Proxy ist im Heimnetz des Nutzers geilbar und optional deaktivierbar | M |
+| FA-500 | **In-App-Backend (Node/TypeScript; Entscheidung O-4, Rev. 4):** eingebettetes Node.js-Backend innerhalb der App (z. B. nodejs-mobile), lauscht ausschließlich auf **127.0.0.1** – kein LAN-/Netz-Exposure, daher keine Authentifizierung nötig. Ruft die Provider ab, parst strukturiert und liefert JSON an die UI; dadurch Wartung der Parser ohne App-Release. In den Einstellungen deaktivierbar | M |
 | FA-501 | Pro Entitätsart existiert **eine Eingabemaske** (Zutat, Rezept, Aktivitätsvorlage, Kategorie, Profil, Einkauf, …); Parser/Proxy **vorbefüllt** diese Maske – der Nutzer prüft, korrigiert und committet | M |
 | FA-502 | **Suchprovider-Auswahl und -Reihenfolge** (Entscheidung O-3 – APIs zuerst): 1. **Open Food Facts** (offizielle API), 2. USDA FoodData Central (optional ergänzend), 3. Website-Provider **naehrwertrechner.de**, 4. **fddb**, 5. **rewe.de/rezepte** (Rezepte). Auswählbar im UI (Dropdown/Badges); Standard bei Nährwertabfragen: Open Food Facts | M |
 | FA-503 | Parser-Fehler → keine App-Fehler, sondern klarer Hinweis + angebotene manuelle Erfassung | M |
 | FA-504 | Provider-Interface mit klarer Vertragsdefinition (JSON-Schema pro Entität), damit weitere Quellen ohne App- und Proxy-Rework nachrüstbar sind | M |
-| FA-505 | Provider-Adapter im Proxy sind einzeln konfigurierbar (aktiv/inaktiv, Reihenfolge), jede Antwort wird mit Provider- und Abfragedatum protokolliert, damit die Herkunft der übernommenen Daten nachvollziehbar bleibt | S |
+| FA-505 | Provider-Adapter im Backend sind einzeln konfigurierbar (aktiv/inaktiv, Reihenfolge), jede Antwort wird mit Provider- und Abfragedatum protokolliert, damit die Herkunft der übernommenen Daten nachvollziehbar bleibt | S |
+| FA-506 | **Rev. 4:** UI und Backend stimmen sich beim Start per Versions-Handshake ab (interne API-Version; Inkompatibilität → Hinweis). Übernommene Daten tragen in der **Datenbank** Quelle und Abfragedatum (`quelle`, `abgefragt_am`), nicht nur im Backend-Log | M |
 
 ### 4.7 Statistiken
 
@@ -181,6 +200,8 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-602 | Visualisierung: Balken-/Ring-Diagramme, Ampellogik (unter/innerhalb/über DGE), Tooltip mit Zahlenwerten | M |
 | FA-603 | **Aktivitätsstatistik im Profil:** wie viel Zeit in welcher **Kategorie** mit welchen Aktivitäten verbracht wurde; geschätzter **Kalorienverbrauch** aus Vorlagen-kcal/h × Dauer (orientierend) | M |
 | FA-604 | Vergleich zweier Zeiträume | K |
+| FA-610 | **Zähllogik für die Zufuhr (Rev. 4):** Intake = Σ über alle Kalender-Einträge vom Typ „Essen/Rezept“ bzw. „Essen/Zutat“ × Portionsanzahl im Zeitraum. Teilportionen (z. B. 0,5) sind erlaubt. Reste-Abrechnung („nur die Hälfte gegessen“ mit Portionsangabe beim Eintrag) als Ausbaustufe | M |
+| FA-611 | **Grundumsatz/Energiebilanz:** Grundumsatz (Mifflin-St-Jeor aus Gewicht/Größe/Alter/Geschlecht) × PAL-Faktor als Gesamtumsatz, Bilanz gegen die Zufuhr aus FA-610 – Ausbaustufe V2 | K |
 
 ### 4.8 Robustheit, Eingabelogik
 
@@ -208,6 +229,7 @@ Zählweise Prioritäten: **M** = Muss (V1), **S** = Soll (V1 sofern Aufwand vert
 | FA-900 | Modernes Design, **Orientierung an „Simple Time Tracker“** (F-Droid): klare Flächen, kräftige Kategoriefarben, große Touch-Targets, Dark-Mode | M |
 | FA-901 | Konsistente Farb- und Icon-Sprache; Kategorien erhalten eigene Farbcodes, die im Kalender sichtbar sind | M |
 | FA-902 | Bedienbarkeit: Swipe-/Tap-Gesten im Kalender, Undo beim Löschen | S |
+| FA-903 | **Barrierefreiheit (Rev. 4):** TalkBack-Beschriftungen, Kontrast-Anforderungen, Touch-Ziele min. 48 dp | S |
 
 ## 5. Datenmodell (Skizze)
 
@@ -222,13 +244,14 @@ activity(id, profil_id, titel, beschreibung, kategorie_id, prioritaet,   -- besc
 activity_template(id, titel, beschreibung, kategorie_id, dauer_default,
                   kcal_pro_stunde)
 recurrence(id, aktivitaet_id, typ, intervall, wochentage[], tag_im_monat,
-           tag_im_jahr, startdatum, enddatum NULL)                       -- mehrere pro Aktivität
+           tag_im_jahr, startdatum, enddatum NULL)                       -- mehrere pro Aktivität; Ausnahmen/Instanz-Editing erst V2 (FA-212)
 
 ingredient(id, name, basis_einheit,             -- 'g' | 'ml'
            stueckgewicht_g NULL, dichte_g_pro_ml NULL)
-nutrient(id, name, kategorie,                    -- vitamin|mineral|spurenelement|lipid|amino|…
-         einheit)                                 -- 'mg' | 'ml' (nur Wasser)
-ingredient_nutrient(ingredient_id, nutrient_id, wert_mg_pro_100)          -- Referenz: 100 g/ml
+nutrient(id, name, kategorie,                    -- vitamin|mineral|spurenelement|lipid|amino|alkohol|…
+         einheit)                                 -- 'mg' | 'µg' | 'ml' (nur Wasser); je Nährstoff fest (FA-322)
+ingredient_nutrient(ingredient_id, nutrient_id, wert_normiert_pro_100,    -- normiert je Nährstoff-Einheit (FA-322), Referenz 100 g/ml
+                    quelle NULL, abgefragt_am NULL)                        -- Herkunft (FA-506)
 -- kcal wird nicht gespeichert, sondern per Brennwert-Ableitung errechnet (FA-329):
 -- kcal = Eiweiß×4 + Kohlenhydrate×4 + Fett×9   (pro g; fett: 9 kcal/g, weitere Atwater-Faktoren siehe FA-329)
 
@@ -238,7 +261,8 @@ unit_conversion(id, einheit, faktor_ml, default_g_faktor_ml)
 ingredient_unit_override(ingredient_id, einheit, gramm)                    -- nutzerspezifisch, überschreibt Default
 
 purchase(id, profil_id, datum)
-purchase_item(id, purchase_id, ingredient_id, menge, einheit, zustand)     -- z. B. 'TK' | 'trocken' | 'frisch'
+purchase_item(id, purchase_id, ingredient_id, menge, einheit, zustand,     -- z. B. 'TK' | 'trocken' | 'frisch'
+              mhd NULL, uebrig_gelassen NULL)                              -- MHD (FA-404); Reste-Anteil K (FA-610)
 
 reference_dge(nutrient_id, altersgruppe, geschlecht, empfohlen_tag)        -- Referenzwerte, nicht hart kodiert
 ```
@@ -246,7 +270,7 @@ reference_dge(nutrient_id, altersgruppe, geschlecht, empfohlen_tag)        -- Re
 Hinweise zum Modell:
 
 - Nährwerte liegen **zeilenweise in Milligramm** in einer Zuordnungstabelle (`ingredient_nutrient`), nicht als breite Spaltenstraße → neue Nährstoffe sind migrationsfrei ergänzbar.
-- Energie (kcal) ist ein Sonderfall: chemische Energie lässt sich nicht in Milligramm messen. Vorschlag: kcal als eigener Wert pro 100 g/ml in `ingredient` bzw. im Rezept als Zielgröße → Offener Punkt O-2.
+- Energie (kcal) ist ein Sonderfall: chemische Energie lässt sich nicht in Milligramm messen. Festlegung (O-2, FA-329): kcal wird **abgeleitet, nicht gespeichert**. Einheiten sind nährstoffspezifisch (FA-322: mg/µg/ml, intern auf µg normiert).
 
 ## 6. Meilensteine
 
@@ -256,10 +280,10 @@ Hinweise zum Modell:
 | **M2 – Kalender & Aktivitäten** | Wochenansicht, Aktivitäten, Wiederholungen, Prioritäten, Kategorien, Vorlagen, Kalender-Sync |
 | **M3 – Zutaten & Rezepte** | Zutaten-CRUD mit Nährwertprofil, Rezept-CRUD, Portions- und Einheiten-Umrechnung, lokale Suche, **Parser-Proxy (Node/TS) mit Provider-Adaptern** (Open Food Facts zuerst, darauf folgend die Website-Provider) |
 | **M4 – Integration Kochen** | Aktivität „Kochen“ mit Rezeptvorschlag, Teilschritte, Portionen, Nährwertdetails |
-| **M5 – Bestand & Einkäufe** | Einkaufserfassung, Bestandsliste, Warn-/Nachfrage-Logik (FA-800) |
+| **M5 – Bestand & Einkäufe** | Einkaufserfassung, Bestandsliste inkl. **FIFO-Abbuchung (FA-401, Rev. 4)**, MHD-Warnliste (FA-404), Warn-/Nachfrage-Logik (FA-800) |
 | **M6 – Statistiken** | Ernährungs- und Aktivitätsstatistik, DGE-Vergleich, Profil-Wechsel und -Vergleich |
 | **M7 – Export/Import & Feinschliff** | JSON-Export/Import, Design-Feinschliff, Stabilitätstest |
-| **M8 – Ausbaustufe** | iOS als separates Folgprojekt (gleiche Datenverträge, gleicher Node-Proxy), weitere Such-Provider, Bestandsabbuchung |
+| **M8 – Ausbaustufe** | iOS über dieselbe Codebasis (O-1, Rev. 2), Serien-Editing und Ausnahmen (FA-212), Grundumsatz-Bilanz (FA-611), Reste-Abrechnung (FA-610), weitere Such-Provider |
 
 ## 7. MVVM-Schichten (React Native / TypeScript)
 
@@ -290,12 +314,12 @@ Nachtrag zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-8
 
 ## 8. Nicht-funktionale Anforderungen
 
-- **Datenschutz:** Gesundheits- und Essverhaltensdaten (Nährwerte, Gewicht, Alter) sind sensibel; Verarbeitung rein lokal im Heimnetz, keine Cloud-Pflicht, keine Werbe-/Tracking-SDKs. DSGVO-Prüfung, falls später Sync/Backup über Drittanbieter angeboten wird.
+- **Datenschutz:** Gesundheits- und Essverhaltensdaten (Nährwerte, Gewicht, Alter) sind sensibel; Verarbeitung rein lokal im Heimnetz, keine Cloud-Pflicht, keine Werbe-/Tracking-SDKs. **Rev. 4:** Suchbegriffe und Abfragen gehen an die gewählten Provider (Open Food Facts etc.) – das wird in den Einstellungen transparent dokumentiert (welcher Provider erhält welche Daten, Attributions-Pflicht von Open Food Facts); keine Telemetrie, keine Konten. DSGVO-Prüfung, falls später Sync/Backup über Drittanbieter angeboten wird.
 - **Robustheit:** keine unbehandelten Fehler bei fehlenden Daten (FA-800); Import/Parsing scheitert niemals mit Absturz, sondern führt zu Hinweis und Nachfrage.
 - **Performance:** Wochenansicht bleibt auch mit mehreren hundert Einträgen flüssig (lazy render, FlatList/FlashList).
 - **Testbarkeit:** Umrechnung, Energie-Ableitung (FA-329), Wiederholungslogik, Statistik = Unit-Tests; UI-Smoke-Tests.
 - **Sprache:** UI deutsch; Internationalisierung (Englisch) vorbereitet.
-- **Lizenz/Vertrieb (Entscheidung O-5):** Vertrieb **ausschließlich über F-Droid**; daher nur FOSS-Libraries (keine proprietären SDKs, keine Google-Play-Services-Abhängigkeiten im Kern), Lizenz **LGPL-3.0** (Linking-Erlaubnis bewusst gewählt). Der Parser-Proxy ist optional und läuft im Heimnetz des Nutzers (self-hosted).
+- **Lizenz/Vertrieb (Entscheidung O-5):** Vertrieb **ausschließlich über F-Droid**; daher nur FOSS-Libraries (keine proprietären SDKs, keine Google-Play-Services-Abhängigkeiten im Kern), Lizenz **LGPL-3.0** (bewusst gewählt; Hinweis Rev. 4: LGPL ist primär eine Bibliotheks-Lizenz, für eine Gesamt-App zulässig, üblicher wäre GPL-3.0). Der Parser-Proxy ist optional und läuft im Heimnetz des Nutzers (self-hosted).
 
 ## 9. Getroffene Entscheidungen
 
@@ -306,3 +330,26 @@ Nachtrag zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-8
 | **O-3** | Datenquellen | **Offizielle APIs zuerst:** Open Food Facts als Standard-Provider, USDA FoodData Central optional; danach Website-Provider naehrwertrechner.de, fddb, rewe.de/rezepte über das Provider-Interface (FA-502) |
 | **O-4** | Backend | **Node-Parser-Proxy (TypeScript, Fastify) ab V1**, im Heimnetz des Nutzers self-hosted und optional deaktivierbar (FA-500) |
 | **O-5** | Lizenz/Vertrieb | Vertrieb **nur über F-Droid**; Lizenz **LGPL-3.0** (Rev. 2); nur FOSS-Libraries, keine proprietären SDKs |
+
+## 10. Abnahmekriterien (Rev. 4)
+
+1. Alle **M**-Anforderungen sind laut Test-Katalog (FA-854) bestanden; kein unvollständiger Pflichtkern-Loop offen (FA-340).
+2. Wochenansicht rendert 500 Einträge/Woche ohne spürbares Ruckeln; KW-Navigation/Swipe reagiert sofort (FA-202/204).
+3. Ein neues Rezept inkl. vollständiger Pflichtkern-Nährwerte ist in einer geführten Sitzung in ≤ 3 Minuten anlegbar (FA-304/305).
+4. Profilwechsel wechselt die Datenbank (FA-851); Daten des inaktiven Profils sind nicht sichtbar.
+5. FIFO-Abbuchung: Kochen einer Rezeptportion reduziert den Bestand korrekt; Deckungslücken werden angezeigt (FA-401).
+6. Bei deaktiviertem In-App-Backend bleibt die App voll nutzbar ohne externe Suche (FA-500).
+7. Export → Import auf leerer Installation rekonstruiert alle Profildaten inkl. Kalender-Einträgen (FA-104).
+8. Zielplattform: **Android 10+ (API 29, Entscheidung Rev. 4)**; UI-Smoke-Tests auf Referenzgerät; Zielband 400–600 kcal erscheint nur als Anzeige (FA-302).
+
+## 11. Risikoregister (Rev. 4)
+
+| Risiko | Wirkung | Gegenmaßnahme |
+|---|---|---|
+| Provider blockiert oder stellt ab (Website-Scraping) | Externe Suche fällt aus | APIs zuerst (O-3), Antwort-Caching, manuelle Erfassung bleibt |
+| Parser-Bruch nach Website-Rework | Falsche/leere Vorschläge | Parser im In-App-Backend versioniert (FA-500), Validierung vor Masken-Füllung (FA-501) |
+| Android-Batterieoptimierung stoppt Hintergrund-Sync | Kalender-Sync hinkt | Zusätzlich Sync on-start/on-change statt nur Background-Job; Nutzer-Hinweis |
+| Eingebettetes Node-Runtime inkompatibel (nodejs-mobile + Expo, Geräteunterschiede) | Backend startet nicht | Fallback lokale Suche + manuelle Erfassung (FA-500); Kompatibilität früh in M3 testen |
+| Multi-DB-Komplexität (drizzle, mehrere Verbindungen, FA-851) | Fehlverhalten bei Profilwechsel | DB-Integrationstests pro Migrationslevel (FA-854) |
+| F-Droid-Repro-Builds mit React Native | Vertrieb verzögert | Dependencies festnageln, keine Binär-Blobs, Build-Pipeline früh einrichten |
+| DGE-Referenzwerte-Lizenz | Tabelle evtl. nicht frei verteilbar | Referenzwerte als Seed-Daten (FA-852) mit Quellenangabe, nutzeranpassbar |
