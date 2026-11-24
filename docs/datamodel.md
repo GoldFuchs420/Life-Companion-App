@@ -6,7 +6,7 @@
 
 **Konventionen**
 
-- Ziel-DB: **SQLite** (expo-sqlite + drizzle-orm, WAL-Modus); `FOREIGN KEY`-Prüfung aktiviert (`PRAGMA foreign_keys = ON`).
+- Ziel-DB: **SQLite** (expo-sqlite über das DbDriver-Port, WAL-Modus; kein ORM – Lastenheft Anhang C, T-1); `FOREIGN KEY`-Prüfung aktiviert (`PRAGMA foreign_keys = ON`).
 - Jede Datenbank-Datei trägt ihre Versionsstände selbst (`db_meta`: `schema_version`, `seed_version`, `app_version_erstellt`).
 - Kalender-/Zeitwerte als ISO-8601-Text (`YYYY-MM-DD`, `YYYY-MM-DDTHH:MM`) – Sortierung und Zeitraum-Vergleiche (`BETWEEN`, `ORDER BY`) sind in SQLite lexikographisch korrekt.
 
@@ -286,7 +286,8 @@ CREATE INDEX idx_consumption_posten ON stock_consumption(purchase_item_id);
 
 CREATE TABLE reference_dge (                       -- FA-601; Seed FA-852
   nutrient_id   INTEGER NOT NULL REFERENCES nutrient(id),
-  altersgruppe  TEXT NOT NULL,                     -- '15-25','25-51','51-65','65+','4-10'
+  altersgruppe  TEXT NOT NULL,                     -- K-Default-Gruppen: 15-19/19-25/25-51/51-65/65+;
+                                                   -- aktuell geseedet: nur '25-51' (FA-852, Prüfung M3)
   geschlecht    TEXT NOT NULL CHECK (geschlecht IN ('maennlich','weiblich','divers')),
   empfohlen_tag REAL NOT NULL,                     -- je Tag, in nutrient.einheit
   PRIMARY KEY (nutrient_id, altersgruppe, geschlecht)
@@ -323,7 +324,7 @@ Beim Anlegen jeder Profildatenbank werden eingespielt (Version in `db_meta.seed_
 | `nutrient` | Nährstoff-Katalog: 6 Pflichtkern (Protein, Fett, Kohlenhydrate, Zucker, Ballaststoffe, Wasser), 13 Vitamine, 13 Mineralstoffe/Spurenelemente, Lipide (gesättigt/einfach/mehrfach), Aminosäuren-Grundset, Alkohol – je mit `einheit` und `stufe` (FA-322/340) |
 | `unit_conversion` | TL (5 ml), EL (15 ml), Prise (0,5 ml), Tasse 150/250/330 ml; Default-Dichten für häufige Mittel (FA-331) |
 | `shopping_category` | Milchprodukte, Obst, Gemüse, Kartoffeln, Getreide/Backwaren, Fleisch/Fisch, Tiefkühl, Snacks, Getränke, Sonstiges (FA-407) |
-| `reference_dge` | DGE-Referenzwerte je Nährstoff × Altersgruppe × Geschlecht, mit Quellenangabe im Kommentar-Export (FA-601) |
+| `reference_dge` | DGE-Referenzwerte je Nährstoff × Altersgruppe × Geschlecht; `empfohlen_tag` in der **Anzeigeeinheit** des Nährstoffs pro Tag, intern µg via `normfaktor_nach_µg` (Lastenheft Anhang C, T-6); kann leer bleiben → „Referenzwert fehlt“ (FA-800) |
 | `app.db: provider_consent` | alle Provider mit `akzeptiert_am = NULL` – **kein Provider wird ohne Einwilligung kontaktiert** (FA-507, O-8) |
 | optional | einige Beispiel-Zutaten/Rezepte (kann leer bleiben, FA-853) |
 
