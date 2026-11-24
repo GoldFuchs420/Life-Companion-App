@@ -1,6 +1,6 @@
 # Lastenheft: LifeCompanion
 
-**Version:** 0.12 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4); DB-Design verbindlich ausgearbeitet in `docs/datamodel.md` (Rev. 11); Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
+**Version:** 0.13 · **Status:** überarbeitet und restrukturiert – Abläufe zuerst erzählt (Abschnitt 4); DB-Design verbindlich in `docs/datamodel.md`, API-Vertrag des In-App-Backends verbindlich in `docs/proxy-api.md` (Rev. 12); Änderungshistorie in Anhang B · **Plattform-Ziel:** Android 10+ (API 29), iOS folgt über dieselbe Codebasis
 
 ## 1. Zielsetzung
 
@@ -288,6 +288,8 @@ Neben dem Kalender existiert das **Rezeptbuch** als eigene Ansicht im Hauptmenü
 
 ### 5.6 Suchprovider, Parser, In-App-Backend
 
+> Die **verbindliche Ausgestaltung** der Backend-Schnittstelle (Endpunkte, Draft-Schemas, Fehlermodell, Adapter-Interface, Consent- und Offline-Verhalten) liegt in **[`docs/proxy-api.md`](proxy-api.md)**; Abweichungen werden dort dokumentiert.
+
 | ID | Anforderung | Prio |
 |---|---|---|
 | FA-500 | **In-App-Backend (Node/TypeScript; Entscheidung O-4):** eingebettetes Node.js-Backend innerhalb der App (z. B. nodejs-mobile), lauscht ausschließlich auf **127.0.0.1** – kein LAN-/Netz-Exposure, daher keine Authentifizierung nötig. Ruft die Provider ab, parst strukturiert und liefert JSON an die UI; dadurch Wartung der Parser ohne App-Release. In den Einstellungen deaktivierbar | M |
@@ -495,6 +497,8 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | **O-5** | Lizenz/Vertrieb | Vertrieb **nur über F-Droid**; Lizenz **LGPL-3.0**; nur FOSS-Libraries, keine proprietären SDKs |
 | **O-6** | Preis-/Marktdaten | **Rein lokal:** Preise und Märkte kommen ausschließlich aus der selbst erfassten Einkaufshistorie; keine Online-Preisabfragen (Datenschutz, F-Droid-Freundlichkeit). Erweiterung über das Provider-Interface (FA-504) bleibt möglich |
 | **O-7** | Barcode | Barcode-Feld an der Zutat **ab V1** mit Open-Food-Facts-Lookup (FA-410); **Kamera-Scanner in V2** (FA-411); interne Modell-Abstufung wie Provider-Suche (FA-502) |
+| **O-8** | Provider-Einwilligung | Einmalige, explizite Zustimmung **pro Provider** vor dem ersten Abruf (auch Rezept- und Barcode-Suchen); protokolliert in `provider_consent`, jederzeit widerrufbar; ohne Einwilligung kontaktiert die App den Provider nie (FA-507) |
+| **O-9** | Backend-Vertrag | Das In-App-Backend ist **nur Provider-/Parser-Schicht**: loopback-only (127.0.0.1), zustandslos bzgl. Nutzerdaten, schreibt nie in SQLite, liefert Drafts für die Masken; Commit, Berechnungen und Speicherung bleiben in der App. Verbindlicher Vertrag: `docs/proxy-api.md` (FA-500/504) |
 
 ### Anhang B – Änderungshistorie
 
@@ -507,7 +511,8 @@ Hinweis zur Datenhaltung: Die lokalen SQLite-Datenbanken (eine pro Profil, FA-85
 | 5 | Kategorie-Filter (FA-214/612), Mangel-Prognose mit Schließungs-Vorschlägen (FA-613/614), Verbrauchs-Rezeptvorschläge V2 (FA-405) |
 | 6 | Rezeptbuch als Tagesplan-Ansicht im Hauptmenü (FA-360–363) |
 | 7 | Prognose-Fenster einstellbar (Standard 14 Tage, 1–365), Rezeptbuch-Range im Rezeptbuch selbst wählbar bis 1 Jahr mit Virtualisierung (FA-360/613/614) |
+| 8 (→ v0.9) | Restrukturierung: neuer Abschnitt 4 „Anwendungsabläufe“ (zehn Nutzerflüsse mit FA-Querverweisen), Meilensteine als Phasenplanung hinter die NFA verschoben, Datenbank-/Seed-/Test-Abschnitt als 5.9 in die Anforderungen integriert, inline Rev.-Markierungen in Anhang B ausgelagert, veraltete „Proxy im Heimnetz“-Formulierungen durch die Entscheidung „eingebettetes Backend auf 127.0.0.1“ ersetzt |
+| 9 (→ v0.10) | Einkaufsplanung aus Fehlbeständen (FA-406, Einkaufsdetails Markt/Produktkategorie/Menge/Preis (FA-407), Marktvorschlag + Preis-/Mengenverläufe rein lokal (FA-408/409, O-6), Barcode-Feld mit OFF-Lookup ab V1 (FA-410, O-7), Kamera-Scanner V2 (FA-411), Bluetooth-Teilen V3 (FA-910–912), Mehrsprachigkeit DE/EN/FR/IT/ES (FA-106), Wiederholungstypen kombinierbar (FA-207a) |
 | 10 (→ v0.11) | Datenschutz für alle externen Anfragen (auch Rezept-/Barcode-Suchen) präzisiert; Provider-Einwilligung: einmalige Zustimmung pro Provider, protokolliert und widerrufbar (FA-507, O-8); Offline-Funktion: Kern offline, Online nur auf Anforderung, Ergebnis-Cache (FA-508) |
 | 11 (→ v0.12) | Datenbank-Entwurf (FA-850) in `docs/datamodel.md` ausgearbeitet: zwei DB-Dateien (`app.db` + eine je Profil), 25 Tabellen, kcal-View, Seed-Katalog, Migrationen, Test-Fixtures; Skizze in Abschnitt 6 bleibt Überblick, Ausgestaltung ist dort verlinkt |
-| 9 (→ v0.10) | Einkaufsplanung aus Fehlbeständen (FA-406, Einkaufsdetails Markt/Produktkategorie/Menge/Preis (FA-407), Marktvorschlag + Preis-/Mengenverläufe rein lokal (FA-408/409, O-6), Barcode-Feld mit OFF-Lookup ab V1 (FA-410, O-7), Kamera-Scanner V2 (FA-411), Bluetooth-Teilen V3 (FA-910–912), Mehrsprachigkeit DE/EN/FR/IT/ES (FA-106), Wiederholungstypen kombinierbar (FA-207a) |
-| 8 (→ v0.9) | Restrukturierung: neuer Abschnitt 4 „Anwendungsabläufe“ (zehn Nutzerflüsse mit FA-Querverweisen), Meilensteine als Phasenplanung hinter die NFA verschoben, Datenbank-/Seed-/Test-Abschnitt als 5.9 in die Anforderungen integriert, inline Rev.-Markierungen in Anhang B ausgelagert, veraltete „Proxy im Heimnetz“-Formulierungen durch die Entscheidung „eingebettetes Backend auf 127.0.0.1“ ersetzt |
+| 12 (→ v0.13) | API-Vertrag des In-App-Backends in `docs/proxy-api.md` ausgearbeitet: Loopback-Prinzipien, Handshake/Bootstrap, 9 Endpunkte, Draft-Schemas (FA-504), Consent-Erzwingung (FA-507), Offline-Pfad (FA-508), Fehlermodell (FA-503), Adapter-Interface, Testbarkeit; Anhang A um O-8 (fehlend) und O-9 ergänzt |
